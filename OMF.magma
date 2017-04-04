@@ -1,0 +1,22 @@
+function slopes_of_NP(f)
+	NP := NewtonPolygon(f);
+	vs := LowerVertices(NP);
+	s := [];
+	for a in [1..#vs-1] do
+		slope := (vs[a+1][2]-vs[a][2])/(vs[a+1][1]-vs[a][1]);
+		mult := vs[a+1][1]-vs[a][1];
+		for j in [1..mult] do
+			s := Append(s,slope);
+		end for;
+	end for;
+	return s;
+end function;
+
+function slopes(p,N,k,prec)
+	f := OverconvergentHeckeSeries(p,N,k,prec);
+	return slopes_of_NP(f);
+end function;
+
+
+
+
