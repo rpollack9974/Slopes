@@ -1,0 +1,7 @@
+load "OMF.magma";
+for p in [5..200] do
+	if IsPrime(p) then
+		s := slopes(p,1,0,200);
+		print p," ",s;
+	end if;
+end for;
