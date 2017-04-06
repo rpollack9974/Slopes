@@ -47,9 +47,11 @@ def mult(g,j,comp):
 
 
 def test_on_rim(p,comp):
-    g=form_ghost_shell(1,p,p*(p^2-1)/24+30)
-    v1 = NewtonPolygon([(j,mult(g,j,comp)) for j in range(0,p*(p^2-1)/24+1)]).slopes()
+    g=ghost(p,1)
     v2 = slopes_on_rim(1,p,comp)
+    v1 = g.wadic_slopes(comp,num=len(v2))
+    print v1
+    print v2    
     return v1 == v2
 	
 

@@ -28,6 +28,15 @@ class ghost(SageObject):
 			g.wadic_slopes(comp) or g.wadic_slopes(comp,num=??)
 
 		and returns the w-adic slopes on the component comp.
+		(Components are represented by even integers between 0 and p-2.)
+
+		To access the actual ghost zeroes type:
+
+			g[comp][i]
+
+		to see a list with multiplicities of the ghost series of the i-th coefficient
+		on component comp.  What you see should be self-explanatory except if p=2 and N>1.
+		Then the "modified" ghost zeroes are represented by negative integers.
 	"""
 
 	def compute_ghost_series(self,num_coefs=10):
@@ -70,6 +79,8 @@ class ghost(SageObject):
 			f2 = dimension_cusp_forms(N*p,k)-2*f1
 			inds = range(f1+1,f1+f2)
 		self.series=ghost_coefs
+		if p==2 and N>1:
+			self.form_p2_modification()
 
 	def __init__(self,p,N,num_coefs=10):
 		"""Initializes the ghost series
@@ -148,11 +159,54 @@ class ghost(SageObject):
 		if num!=None:
 			##HACKING HERE ABOUT NUMBER OF TERMS
 			if self.num_coefs(comp)<num+10:
-				g.compute_ghost_series(num_coefs=num+10)
+				self.compute_ghost_series(num_coefs=num+10)
 
 		NP = [(a,self.multiplicity(comp,a)) for a in range(self.num_coefs(comp))]
 		if num!=None:
 			return NewtonPolygon(NP).slopes()[0:num]
 		else:
 			return NewtonPolygon(NP).slopes()
+
+	def form_p2_modification(self):
+		N = self.N
+		new_ghost_0 = [x for x in self[0]]
+		new_ghost = [new_ghost_0]
+		max_i = len(new_ghost[0])
+		dim_gaps = N*prod([1 + 1/ell for ell in ZZ(N).prime_factors()])
+		chi = [c for c in DirichletGroup(8) if c.conductor() == 8 and c(-1) == 1][0]
+		dim2 = dimension_cusp_forms(DirichletGroup(8*N)(c),2)
+		max_k = floor((max_i - dim2)/dim_gaps + 2)
+		mod_zeros = get_modified_zeros(N,max_k)
+		for j in range(max_i):
+			new_ghost[0][j] += mod_zeros[j]
+		self.series=new_ghost
+
+
+
+
+def get_modified_zeros(N,max_k):
+### This is a helper function for p=2 and N>1 to modify ghost series
+### returns a list [(-k,m)]_i where we want to make a modification
+### to the ghost a_i by adding in a zero of mult m at the weight -5^k - 1.
+
+	# get even character of conductor 8
+	chi = [c for c in DirichletGroup(8) if c.conductor() == 8 and c(-1) == 1][0]
+	S = ModularSymbols(DirichletGroup(N*8)(chi),weight=2,sign=1).cuspidal_subspace()
+	#S = CuspForms(DirichletGroup(N*8)(chi),2)
+	# computes weight 2 slopes with cond. 8
+	mult_slope_list = mults(S.hecke_polynomial(2).newton_slopes(2))
+	# isolates just the fractional slopes in the classical space
+	base_mults = wt2_slopes_to_mults([x for x in mult_slope_list if x[0] != 0 and x[0] != 1])
+	if mult_slope_list[0][0] == 0:
+		start_ind = mult_slope_list[0][1] + 1
+	else:
+		start_ind = 1
+	gap = (S.dimension() + Gamma0(N).ncusps())
+	mods = [[]]*(start_ind + len(base_mults) + gap*(max_k-1))
+	for k in range(2,max_k+1):
+		for j in range(len(base_mults)):
+			if base_mults[j] != 0:
+				mods[j+start_ind + gap*(k-2)] = [(-k,base_mults[j])]
+				#mods[j+start_ind + gap*(k-2)] = [(-2,base_mults[j])]
+	return mods
 
