@@ -1,0 +1,1560 @@
+
+
+
+
+// ----------------------------------------------------------
+// --|                  The U_p operator                  |--
+// ----------------------------------------------------------
+
+//  *** AUXILIARY CODE FOR GENERAL LEVEL ***
+
+// CLASSICAL MODULAR FORMS
+
+// Returns Eisenstein series E_k over given ring S modulo q^NN normalised
+// to have constant term a_0 = 1.
+
+function ESeries(k,NN,S)
+
+	R<q> := PowerSeriesRing(S,NN);
+	a1 := -S!(2*k/Bernoulli(k));
+	Ek := 1 + a1*q;
+	for n := 2 to NN-1 do
+		coeffn := 0;
+		divs := Divisors(n);
+		for d in divs do
+			coeffn := coeffn + d^(k-1);
+		end for;
+		Ek := Ek + a1*coeffn*q^n;
+	end for;
+
+	return Ek;
+
+end function;
+
+// Returns the power of the Hasse invariant that has been lifted.
+// This is always 1, except when p = 2,3.
+
+function ap(p)
+
+	a := 1;
+	if p eq 2 then
+		a := 4;
+	end if;
+	if p eq 3 then 
+		a := 3;
+	end if;
+	return a;
+
+end function;
+
+// Returns the weight of the Eisenstein series to be used for lifting the Hasse invariant. 
+// This is always p-1, unless p = 2,3.
+
+function EisWeight(p)
+
+	return ap(p)*(p-1);
+
+end function;
+
+// DEGREE BOUND AND CHARACTERISTIC SERIES
+
+// Returns dimension of space of classical modular forms for Gamma_0(N) of weight k.	
+
+function DimensionMNk(N,k)
+
+	if k gt 0 then
+		return Dimension(ModularForms(N,k));
+	elif k eq 0 then
+		return 1;
+	else // k < 0
+		return 0;
+	end if;
+
+end function;
+
+// Writing A := UpGj(p,N,k,m), the function returns d with deg(det(1 - At)) <= d.
+// Uses Lemma 3.1. in D. Wan "Dimension variation of classical
+// and p-adic modular forms", Invent. Math. 133, (1998) 449-463.
+
+function HeckeSeriesDegreeBound(p,N,k,m)
+
+	kk := EisWeight(p);
+	k0:=k mod kk;
+	ds:=[DimensionMNk(N,k0)];
+	ms:=[ds[1]];
+	sum:=0;
+	u:=1;
+		
+	repeat
+		Append(~ds,DimensionMNk(N,k0 + u*kk));
+		Append(~ms,ds[u+1] - ds[u]);
+		sum:=sum + u*ms[u+1];
+		ord:=Floor((EisWeight(p)/(p+1))*sum - ds[u+1]);
+		u:=u+1;
+	until ord ge m;	
+
+	return (ds[u]-1);	
+
+end function;
+
+// Given square matrix A over Z/(p^m) returns det(1 - A t).
+// NOTE: A should be defined over IntegerRing(p^m) rather
+// than pAdicRing(p,m), otherwise this will take forever.
+
+function ReverseCharacteristicPolynomial(A)
+	
+	P:=CharacteristicPolynomial(A);
+	return ReciprocalPolynomial(P);
+
+end function;
+
+// Check kseq contains weights congruent modulo p-1.
+
+function IsValidWeightSequence(kseq,p)
+
+	len:=#kseq;
+	if len eq 0 then
+		return false;
+	end if;
+	
+	result:=true;
+	k0:=kseq[1] mod EisWeight(p);
+	for i:=2 to len do
+		if (kseq[i] mod EisWeight(p)) ne k0 then
+			result:=false;
+		end if;
+	end for;
+
+	return result;
+
+end function;
+
+// *** LEVEL N > 1 ***
+
+// CLASSICAL MODULAR FORMS AND LINEAR ALGEBRA
+
+// Converts a "modular form" to power series in q over Zp/(p^mdash).
+
+function qexpToPS(f,p,mdash,NN)
+
+	M:=Parent(f);
+	// NN:=Precision(M);
+	Zp:=IntegerRing(p^mdash);
+	R<q>:=PowerSeriesRing(Zp,NN);
+	
+	fPS:=R!0;
+	for i:=0 to NN-1 do
+		fPS:=fPS + Coefficient(f,i)*q^i;
+	end for;
+	
+	return fPS;
+
+end function;
+
+// Constructs bases of power series expansions for modular forms of level
+// Gamma_0(N) and (even) weight k <= weightbound.
+// The basis elements are in Zp[[q]]/(p^m,q^NN).
+
+function LowWeightBases(N,p,mdash,NN,weightbound)
+
+	print "q-adic precision NN = ", NN;
+	print "Finding bases for modular forms of low weight.";
+	generators:=[];
+
+	for k:=2 to weightbound by 2 do
+		print "Weight k = ", k;
+		M:=ModularForms(N,k); // Gamma_0(N)
+		// SetPrecision(M,NN);
+		basisweightk:=[];
+		b:=Basis(M,NN);
+		/* for i:=1 to Dimension(M) do
+			f:=M.i;
+			Append(~basisweightk,qexpToPS(f,p,mdash));
+		end for;
+		*/
+		for f in b do
+			Append(~basisweightk,qexpToPS(f,p,mdash,NN));
+		end for;
+		Append(~generators,basisweightk);
+	end for;
+
+	return generators;
+
+end function;
+
+// Returns "random" bases for spaces of modular forms of level Gamma_0(N) and
+// (even) weight k <= weightbound. The basis elements are in Zp[[q]]/(p^mdash,q^NN).
+// The random bases are chosen to be ones for modular forms with coefficients in Zp.
+
+function RandomLowWeightBases(N,p,mdash,NN,weightbound)
+
+	LWB:=LowWeightBases(N,p,mdash,NN,weightbound);
+	R:=Parent(LWB[1][1]);
+	
+	RandomLWB:=[];
+
+	for i:=1 to #LWB do // weight k = 2*i
+		basisweightk:=LWB[i];
+		dimweightk:=#basisweightk;
+		coeffsmat:=Random(GL(dimweightk,p));
+		randombasisweightk:=[];
+		for j:=1 to dimweightk do
+			coeffsmatj:=coeffsmat[j];
+			f:=R!0;
+			for l:=1 to dimweightk do
+				f:=f + (Integers()!coeffsmatj[l])*basisweightk[l];
+			end for;
+			Append(~randombasisweightk,f);
+		end for;
+		Append(~RandomLWB,randombasisweightk);
+	end for;
+
+	return RandomLWB;
+
+end function;
+
+
+// Computes "random" solution in non-negative integers to
+// equation a_1 + 2 a_2 + 3 a_3 + ... + B a_B = K.
+// It uses a greedy algorithm and the output is not uniformly
+// distributed.
+
+function RandomSolution(B,K)
+
+	a:=[];
+	for i:=B to 2 by -1 do
+		ai:=Random(0,Floor(K/i));
+		Append(~a,ai);
+		K:=K - ai*i;
+	end for;
+	a1:=K;
+	Append(~a,a1);
+	arev:=Reverse(a);
+	
+	return arev;
+	
+end function;
+
+// Computes "random" solution based on previously found
+// random solutions in lower weight. This should speed up
+// the function RandomNewBasisModp.
+
+function RandomSolutionComp(Comp,K,p)
+
+	a:=[];
+	l := #Comp;
+	I := K;
+	for i:= 1 to l do
+		if (I-i*EisWeight(p)/2) gt 6 then
+			ai:=Random(0,Floor(K/(I-i*EisWeight(p)/2)));
+			Append(~a,ai);
+			K:=K - ai*(I-i*EisWeight(p)/2);
+		else 
+			Append(~a,0);
+		end if;
+	end for;
+	arev:=Reverse(a);
+
+	return arev, K;
+
+end function;
+
+
+// Returns position of the leading entry of a NON-ZERO vector.
+
+function LeadingPosition(v)
+
+	d:=Dimension(Parent(v));	
+	i:=1;
+	vi:=v[i];
+	while vi eq 0 do
+		i:=i+1;
+		vi:=v[i];
+	end while;
+	
+	return i;
+
+end function;
+
+// Returns leading entry of a vector.
+
+function LeadingEntry(v)
+
+	return v[LeadingPosition(v)];
+
+end function;
+
+// COMPLEMENTARY SPACES.
+
+// Auxiliary function used in main loop of ComplementarySpacesModp
+
+function RandomNewBasisModp(N,p,k,LWBModp,OldBasisModp,weightbound,CompSpacesCode)
+	
+	R:=Parent(LWBModp[1][1]); // power series ring mod p,q^elldash.
+	
+	// Construct TotalBasisModp
+	TotalBasisModp:=OldBasisModp; // Recall E_(p-1) = 1 mod p.
+	elldash:=NumberOfColumns(TotalBasisModp);
+	
+	// Case k0 + i(p-1) = 0 + 0(p-1) = 0
+	if k eq 0 then 
+		// empty string <-> 1 for NewBasis.
+		TotalBasisModp[1,1]:=1;
+		return TotalBasisModp, [[]], 0; // March 28: added zero for numberoftries
+	end if;
+	
+	// Case k = k0 + i(p-1) > 0
+	di:=DimensionMNk(N,k);
+	diminus1:=DimensionMNk(N,k-EisWeight(p));
+	mi:=di - diminus1;
+	
+	// Generate mi new forms in weight k.
+	NewBasisCode:=[];
+	rk:=diminus1; // number of non-zero rows in TotalBasisModp
+    numberoftries:=0;
+	for i:=1 to mi do // extra forms 
+		while (rk lt diminus1 + i) do
+			// construct random form of weight k
+            numberoftries:=numberoftries+1;
+			CompExps,K:=RandomSolutionComp(CompSpacesCode,k/2,p);
+			exps:=RandomSolution(Floor(weightbound/2),K);
+			TotalBasisi:=R!1;
+			TotalBasisiCode:=[]; // empty string <-> 1.
+			for j:=1 to #exps do // length exps is bound/2
+				for l:=1 to (Integers()!exps[j]) do // pick exps[j] elements in weight 2*j
+					a:=Random(1,#LWBModp[j]); // choose an index 
+					TotalBasisi:=TotalBasisi*LWBModp[j][a]; // multiply by form
+					Append(~TotalBasisiCode,[j,a]);
+				end for;
+			end for;
+			for j:=1 to #CompExps do
+				for l:=1 to (Integers()!CompExps[j]) do 
+					a:=Random(1,#CompSpacesCode[j]);
+					fja := CompSpacesCode[j][a]; 
+					for l:= 1 to #fja do
+						TotalBasisi:=TotalBasisi*LWBModp[fja[l][1]][fja[l][2]]; 
+					end for;
+					TotalBasisiCode := TotalBasisiCode cat fja;
+				end for;
+			end for;
+			TotalBasisModp[rk + 1]:=Vector([Coefficient(TotalBasisi,j): j in [0 .. elldash-1]]);
+			TotalBasisModp:=EchelonForm(TotalBasisModp);
+			rk:=Rank(TotalBasisModp);
+		end while;
+		Append(~NewBasisCode,TotalBasisiCode); // this one increased dimension.
+	end for;
+		
+	return TotalBasisModp,NewBasisCode,numberoftries;
+
+end function;
+
+// Finds complementary spaces modulo p and returns a list of "codes" describing
+// what products of basis forms were chosen.
+
+function ComplementarySpacesModp(N,p,k0,n,elldash,LWBModp,weightbound)
+
+	print "Constructing complementary spaces modulo p";
+	CompSpacesCode:=[];
+	ell:=DimensionMNk(N,k0 + n*EisWeight(p));
+	OldBasisModp:=ZeroMatrix(GF(p),ell,elldash); // Jan 5: Use matrix rather than lists
+    totalnumberoftries:=0;
+	for i:=0 to n do
+		TotalBasisModp,NewBasisCodemi,numberoftriesi:=RandomNewBasisModp(N,p,k0 + i*EisWeight(p),LWBModp,OldBasisModp,weightbound,CompSpacesCode);
+		Append(~CompSpacesCode,NewBasisCodemi);
+		OldBasisModp:=TotalBasisModp;
+        totalnumberoftries+:=numberoftriesi;
+	end for;
+    print "ell, numberoftries: ", ell, totalnumberoftries;
+
+	return CompSpacesCode;
+
+end function;
+
+// Reduces the basis of low weight forms mod (p,q^elldash).
+
+function LowWeightBasesModp(LWB,p,elldash)
+
+	R:=PowerSeriesRing(GF(p),elldash);
+	LWBModp:=[];	
+	
+	for i:=1 to #LWB do // weight k = 2*i
+		LWBModpWeightk:=[];
+		for j:=1 to #LWB[i] do
+			Append(~LWBModpWeightk,R!LWB[i][j]);
+		end for;
+		Append(~LWBModp,LWBModpWeightk);
+	end for;
+	
+	return LWBModp;
+
+end function;
+
+// Returns complementary spaces W = [W_0,W_1,...,W_n] as list of 
+// basis elements W_i modulo (p^mdash,q^elldashp).
+
+function ComplementarySpaces(N,p,k0,n,mdash,elldash,elldashp,weightbound)
+
+	// Find q-expansions for k <= weightbound mod (p^mdash,q^elldashp)
+
+	LWB:=RandomLowWeightBases(N,p,mdash,elldashp,weightbound);
+	
+	// Find required products mod (p,q^elldash): this was suggested to the
+	// author by John Voight.
+
+	LWBModp:=LowWeightBasesModp(LWB,p,elldash);
+	CompSpacesCode:=ComplementarySpacesModp(N,p,k0,n,elldash,LWBModp,weightbound);
+    // print "N,p,k0,n,elldash", N,p,k0,n,elldash;
+        
+	// Reconstruct products mod (p^mdash,q^elldashp)
+	
+	print "Constructing complementary spaces ...";
+	W:=[];
+	
+	// Epm1:=ESeries(p-1,elldashp,IntegerRing(p^mdash)); March 21, 2012
+    Zpmdashq:=PowerSeriesRing(IntegerRing(p^mdash),elldashp);
+
+	OldBasis:=[];
+	for i:=0 to n do
+		CompSpacesCodemi:=CompSpacesCode[i+1];
+		Wi:=[];
+		for k:=1 to #CompSpacesCodemi do
+			// "code" <-> [ ... (k/2,a) ...] where k = weight, a = index of element
+			// of weight k chosen, and then one takes the product over the list.
+			CompSpacesCodemik:=CompSpacesCodemi[k];			
+			// Wik:=Parent(Epm1)!1; March 21, 2012
+            Wik:=Zpmdashq!1;
+			for j:=1 to #CompSpacesCodemik do 
+				kby2:=CompSpacesCodemik[j][1];
+				index:=CompSpacesCodemik[j][2];
+				Wik:=Wik*LWB[kby2,index];
+			end for;
+			// print Valuation(Integers()!Coefficient(Wik,Valuation(Wik)),p); // Feb 22
+			Append(~Wi,Wik);
+		end for;
+		Append(~W,Wi); 
+	end for;
+
+	return W;
+
+end function;
+
+
+// AUXILIARY CODE: KATZ EXPANSIONS
+
+// Returns basis of Katz Expansions modulo (p^mdash,q^elldashp) as a matrix
+// of coefficients. These are (part of) a basis for the space of overconvergent
+// modular forms of level N and weight k0.
+
+function HigherLevelKatzExp(N,p,k0,m,mdash,n,elldash,elldashp,weightbound)
+
+	ordr:=ap(p)/(p+1); 
+	S:=IntegerRing(p^mdash);
+	Ep1:=ESeries(EisWeight(p),elldashp,S);
+	R:=Parent(Ep1);
+	q:=R.1;
+
+	// construct basis as list of series
+
+	W:=ComplementarySpaces(N,p,k0,n,mdash,elldash,elldashp,weightbound);
+	KatzBasis:=[];
+	for j:=0 to n do
+		Wj:=W[j+1];
+		dimj:=#Wj;
+		Ep1minusj:=Ep1^-j;
+		for i:=1 to dimj do
+			wji:=Wj[i];
+			b:=p^Floor(ordr*j)*wji*Ep1minusj;
+			Append(~KatzBasis,b);
+		end for;
+	end for;
+	
+	// extract basis as matrix
+	
+	ell:=#KatzBasis;
+	M:=ZeroMatrix(S,ell,elldashp);
+	for i:=1 to ell do
+		for j:=1 to elldashp do
+			M[i,j]:=Coefficient(KatzBasis[i],j-1);
+		end for;
+	end for;
+	
+	// reduce: already in "almost" echelon form
+	
+	Mred:=EchelonForm(M);
+
+	// Mred:=MyEchelonFormB(M,p,mdash); // Dec 20: load CCpMF-magma/echelonform.m
+
+	return Mred,Ep1; 
+
+end function;
+
+// Returns ldash, the Sturm bound.
+
+function Computeldash(p,N,k0,m)
+
+	n:=Floor(((p+1)/EisWeight(p))*(m+1+(ap(p)-1)/(p+1)));
+	ldash:=PrecisionBound(ModularForms(Gamma0(N),k0 + n*EisWeight(p)));
+
+	return ldash;
+
+end function;
+
+
+// MAIN FUNCTION.
+
+// Returns matrix A modulo p^m in Step 5 of Algorithm 2 for each k in kseq.
+// kseq has already been checked to have all weights congruent modulo (p-1).
+
+function HigherLevelUpGj(p,N,kseq,m,weightbound)// Compute weight bound
+
+	// Step 1
+	
+	k0:=kseq[1] mod EisWeight(p);
+	elldash:=Computeldash(p,N,k0,m);
+	elldashp:=elldash*p;
+	n:=Floor(((p+1)/EisWeight(p))*(m+1+(ap(p)-1)/(p+1)));	 
+	mdash:=m + Ceiling(n*ap(p)/(p+1));
+	
+	// Steps 2 and 3
+
+	e,Ep1:=HigherLevelKatzExp(N,p,k0,m,mdash,n,elldash,elldashp,weightbound); 
+
+	ell:=Dimension(Parent(Transpose(e)[1]));
+	S:=Parent(e[1,1]);
+
+	// Step 4
+
+	q := Parent(Ep1).1; 
+	Ep1p := Evaluate(Ep1,q^p);
+	Ep1pinv := Ep1p^-1;
+	G := Ep1*Ep1pinv;
+	Aseq:=[];
+	
+	for k in kseq do
+		kdiv:=k div EisWeight(p);
+		Gkdiv := G^kdiv;
+
+		u:=Parent(e)!0; // ell x elldashp zero matrix.
+	
+		for i:=1 to ell do
+			ei:=Parent(Gkdiv)!0;
+			for j:=1 to elldashp do // extract rows of a as series
+				ei:=ei + e[i,j]*q^(j-1);
+			end for;
+			Gkdivei:=Gkdiv*ei; // act by G^kdiv
+			for j:=1 to elldashp do // put back as rows of ak
+				u[i,j]:=Coefficient(Gkdivei,j-1);
+			end for;
+		end for;
+
+		// Step 5
+
+		T:=ZeroMatrix(S,ell,elldash);
+	
+		for i:=1 to ell do
+			for j:=1 to elldash do
+				T[i,j]:=u[i,p*(j-1) + 1];
+			end for;
+		end for;
+	
+		// Step 6: Solve T = AE for A.
+
+		A := ZeroMatrix(S,ell,ell);
+	
+		for i := 1 to ell do
+			Ti := T[i];		
+			for j := 1 to ell do
+				ej := Parent(Ti)![e[j,l]: l in [1 .. elldash]];
+				ejleadpos:=LeadingPosition(ej);
+				lj:=Integers()!ej[ejleadpos];
+				A[i,j] := S!((Integers()!Ti[ejleadpos])/lj);
+				Ti := Ti - A[i,j]*ej;
+			end for;
+		end for;
+		
+		// Append(~Aseq,MatrixRing(pAdicRing(p,m),ell)!A);
+		
+		Append(~Aseq,MatrixRing(IntegerRing(p^m),ell)!A);
+		
+	end for;
+		
+	return Aseq,e,mdash;
+
+
+end function;
+
+//  *** LEVEL 1 ***
+
+// Returns dimension of space of modular forms of weight k and level 1.
+
+function DimensionMk(k)
+
+	if ((k mod 2) eq 1) or (k lt 0) then
+		return 0;
+	end if;
+	kmod12 := k mod 12;
+	if (kmod12 eq 2) then
+		return Floor(k/12);
+	else
+		return Floor(k/12) + 1;
+	end if;
+
+end function;
+
+// Returns basis for W_i (those elements in the Miller basis of weight k which 
+// are not in E_(p-1) x {weight (k - (p-1)) forms} and a power of delta
+// which can be reused on the next call of function.
+
+function ComputeWi(k,p,delta,deltaj,E4,E6)
+	
+	// Define a and b
+	a := k mod 3;
+	b := (k div 2) mod 2;
+		
+	// Compute dimensions required for Miller basis
+	d := DimensionMk(k) - 1;
+	e := DimensionMk(k - EisWeight(p)) - 1;
+	
+	// Construct basis for Wi
+	Wi := [];
+	for j := e+1 to d do
+		// compute aj = delta^j*E6^(2*(d-j) + b)*E4^a
+		aj := deltaj*E6^(2*(d-j) + b)*E4^a;
+		deltaj := deltaj*delta;
+		Wi := Append(Wi,aj);
+	end for;
+
+	return Wi,deltaj;
+
+end function;
+
+// AUXILIARY CODE: KATZ EXPANSIONS
+
+// Returns list e of Katz expansions e_(i,s) from Step 3 of Algorithm 1
+// and E_(p-1) for use in Step 4.
+
+function KatzExpansions(k0,p,ellp,mdash,n)
+	
+	S := IntegerRing(p^mdash); // See Footnote (1) below
+	Ep1 := ESeries(EisWeight(p),ellp,S);
+
+	E4 := ESeries(4,ellp,S);
+	E6 := ESeries(6,ellp,S);
+	q := Parent(E4).1;
+	delta := Delta(q);
+	
+	deltaj := Parent(delta)!1;
+	e := [];	
+	for i := 0 to n do
+		Wi,deltaj := ComputeWi(k0 + i*EisWeight(p),p,delta,deltaj,E4,E6);
+		for bis in Wi do
+			eis := p^Floor(i*ap(p)/(p+1))*Ep1^(-i)*bis;
+			e := Append(e,eis);
+		end for;
+	end for;
+	
+	return e,Ep1;
+
+end function;	
+
+// MAIN FUNCTIONS
+
+// Returns matrix A modulo p^m from Step 6 of Algorithm 1 for each k on kseq.
+// kseq has weights congruent modulo (p-1).
+
+// Notational change from paper: In Step 1 following Wan we defined j by
+// k = k_0 + j(p-1) with 0 <= k_0 < p-1. Here we replace j by kdiv so that
+// we may use j as a column index for matrices.
+
+function Level1UpGj(p,kseq,m) 
+ 
+	// Step 1
+
+	k0 := kseq[1] mod EisWeight(p);
+	n := Floor(((p+1)/EisWeight(p)) * (m+1+(ap(p)-1)/(p+1)));
+	ell := DimensionMk(k0 + n*EisWeight(p));
+	ellp := ell*p;
+	mdash := m + Ceiling(n*ap(p)/(p+1));
+
+	// Steps 2 and 3
+
+	e,Ep1 := KatzExpansions(k0,p,ellp,mdash,n);
+	
+	// Step 4
+
+	q := Parent(Ep1).1; 
+	Ep1p := Evaluate(Ep1,q^p);
+	Ep1pinv := Ep1p^-1;
+	G := Ep1*Ep1pinv;
+	Aseq:=[];
+	
+	for k in kseq do
+		kdiv := k div EisWeight(p);
+		Gkdiv := G^kdiv;
+		u := [];
+		for i := 1 to ell do
+			ei := e[i];
+			ui := Gkdiv*ei;
+			u := Append(u,ui);
+		end for;
+	
+		// Step 5 and computation of T in Step 6
+
+		S := Parent(Coefficient(e[1],0));
+		T := ZeroMatrix(S,ell,ell);
+	
+		for i := 1 to ell do
+			for j := 1 to ell do
+				T[i,j] := Coefficient(u[i],p*(j-1));
+			end for;
+		end for;
+	
+		// Step 6: solve T = AE using fact E is upper triangular.
+		// Warning: assumes that T = AE (rather than pT = AE) has 
+		// a solution over Z/(p^mdash). This has always been the case in 
+		// examples computed by the author, see Note 3.1.
+
+		A := ZeroMatrix(S,ell,ell);
+	
+		for i := 1 to ell do
+			Ti := T[i];		
+			for j := 1 to ell do
+				ej := Parent(Ti)![Coefficient(e[j],l-1): l in [1 .. ell]];
+				lj := Integers()!ej[j];
+				A[i,j] := S!((Integers()!Ti[j])/lj);
+				Ti := Ti - A[i,j]*ej;
+			end for;
+		end for;			
+
+		// Append A mod p^m to Aseq.
+		
+		// Append(~Aseq,MatrixRing(pAdicRing(p,m),ell)!A);
+		
+		Append(~Aseq,MatrixRing(IntegerRing(p^m),ell)!A);
+
+	end for;
+
+	return Aseq,e,mdash;
+
+end function;
+
+//  *** MAIN CODE FOR GENERAL LEVEL ***:
+
+// Returns matrix A modulo p^m from Step 6 of Algorithm 1 (N = 1) or
+// Algorithm 2 (N > 1).
+
+function UpGj(p,N,kseq,m,weightbound)
+
+	if N gt 1 then
+		return HigherLevelUpGj(p,N,kseq,m,weightbound);
+	else
+		return Level1UpGj(p,kseq,m);
+	end if;
+
+end function;
+
+// Returns reverse characteristic series modulo (p^m,q^(d+1)) of the U_p 
+// operator on the space of p-adic overconvergent modular forms of level N and 
+// weight k, for each k in kseq. Here d is the optional parameter degreebound. 
+// If d = Infinity() then output is correct modulo (p^m).
+// The optional parameter weightbound is explained in the preamble.
+
+function HeckeSeries(p,N,kseq,m: weightbound := 6)
+
+    oneweight:=false;
+    // Convert single weight to list
+    if Type(kseq) eq RngIntElt then
+        kseq:=[kseq];
+        oneweight:=true;
+    end if;
+
+	
+	// The algorithm may terminate with false output without the following check:
+	assert IsValidWeightSequence(kseq,p); // Verify klist is a valid input
+	assert ((N mod p) ne 0); // p does not divide N
+	
+	// For list of odd weights return all 1s sequence
+	if IsOdd(kseq[1]) then
+		return [1: i in [1 .. #kseq]];
+	end if;
+	
+	Zpmt<t>:=PolynomialRing(pAdicRing(p,m));
+	Aseq:=UpGj(p,N,kseq,m,weightbound);
+	Pseq:=[];
+	for A in Aseq do
+		P:=ReverseCharacteristicPolynomial(A);
+		Append(~Pseq,Zpmt!P);
+	end for;
+
+    if oneweight eq true then
+        return Pseq[1];
+    else
+        return Pseq;
+    end if;
+    
+end function;
+
+
+
+// ---------------------------------------------------------
+// --|       Ordinary projection of modular forms        |--
+// ---------------------------------------------------------
+
+
+
+/*
+
+There is a bug in vector-matrix multiplication over IntegerRing noticed by Alan Lauder e.g., define
+M:=MatrixRing(IntegerRing(5^10),436) and check linearity with random matrix and 
+two vectors. I have replaced occurences of this with my SLOWER function VMM(); these
+are marked by "BUG". I do not know whether this bug effects matrix multiplication etc.
+(This bug was fixed around May 2013.)
+
+*/
+
+
+// ************* Linear algebra routines *************** 
+
+
+// This routine is MUCH slower than the inbuilt function for vector-matrix multiplication
+// over IntegerRing().
+
+function VMM(v,M)
+
+	V:=Parent(v);
+	dim:=Dimension(V);
+	numr:=NumberOfRows(M);
+	numc:=NumberOfColumns(M);
+	
+	if ((dim ne numr) or (numr ne numc)) then
+		print "Error in VectorMatrixMultiplication!";
+	end if;
+
+	w:=V!0;
+	for j:=1 to numr do
+		for i:=1 to numc do
+			w[j]:=w[j] + v[i]*M[i,j];
+			// w[j]:=w[j] + v[i]*M[j,i];
+		end for;
+	end for;
+	
+	return w;
+	
+
+end function;
+
+// Converts a matrix of coefficients of q-expansions modulo p^mdash to a list
+
+function MatrixToList(e,p,mdash)
+
+	E := [];
+	elldashp := NumberOfColumns(e);
+	ell := NumberOfRows(e);
+	R<q> := PowerSeriesRing(IntegerRing(p^mdash),elldashp);
+	for i:=1 to ell do
+		Ei := R!0;
+		for j:=1 to elldashp do
+			Ei := Ei + (R!e[i,j])*q^(j-1);
+		end for;
+		Append(~E,Ei);
+	end for;
+		
+	return E;
+
+end function; 
+
+// Converts (p/(p+1))-OC form in Katz Basis E to q-expansion.
+
+function KatzToqExp(E,v)
+
+	ell:=#E;
+	qprec:=Precision(Parent(E[1]));
+	S:=Parent(v[1]);
+	PW<q>:=PowerSeriesRing(S,qprec);
+	
+	w:=PW!0;
+	for i:=1 to ell do
+		w:=w + v[i]*(PW!E[i]);
+	end for;
+
+	return w;
+
+end function;
+
+
+// Computes p-adic valuation of a power series: used for checking in qExpToKatz
+
+function ValPS(f,p)
+
+	qprec:=Precision(Parent(f));
+	val:=Infinity();
+
+	for i:=0 to qprec - 1 do
+		val:=Minimum(val,Valuation(Integers()!Coefficient(f,i),p));
+	end for;
+
+	return val;
+
+end function;
+
+
+// Input: E is the Katz basis modulo p^mdash, and f a modular form as a POWER SERIES (to precision at
+// least the "elldash" in UpGj() modulo p^mdash) which is p/(p+1)-overconvergent.
+// Output: f in the Katz basis modulo p^m.
+// Note: there is a loss of precision of mdash - m here, so need coefficients of f in IntegerRing(p^mdash)
+
+function qExpToKatz(f,E,p,m)
+
+	ell := #E;
+	PS := Parent(E[1]);
+	Smdash := Parent(Coefficient(f,0)); // IntegerRing(p^mdash)
+	Sm:=IntegerRing(p^m);
+
+	elldashp:=Precision(PS);
+	elldash:=Minimum(Integers()!(elldashp/p),Precision(Parent(f)));
+
+	Rmdashelldash:=RSpace(Smdash,elldash);
+	w := Rmdashelldash![Coefficient(f,i-1): i in [1..elldash]]; // first elldash coefficients
+	Rmdashell:=RSpace(Smdash,ell);
+	v := Rmdashell![0: i in [1..ell]];
+
+	for j:=1 to ell do
+		Ej:=Rmdashelldash![Coefficient(E[j],l-1): l in [1 .. elldash]];
+		Ejleadpos:=LeadingPosition(Ej);
+		lj:=Integers()!(Ej[Ejleadpos]);
+		if Valuation(lj,p) le m then
+			v[j]:=Sm!((Integers()!w[Ejleadpos])/lj);
+			w:=w - v[j]*Ej;
+			f:=f - v[j]*(Parent(f)!E[j]); // for checking only
+		end if;
+	end for;
+
+	if ValPS(f,p) lt m then // check
+		print "Error in qExpToKatz: form not l.c. of katz basis!", ValPS(f,p);
+	end if;
+
+	Rm:=RSpace(Sm,ell);
+
+	return Rm!v; // loss of precision mdash - m.
+
+end function;
+
+
+
+
+
+
+
+// *************  Projections and operations on forms *************
+
+// Computes U_p on a q-expansion
+
+function Up(f,p)
+	
+	qprec:=Precision(Parent(f));
+	qprecbyp:=Floor(qprec/p);
+	S := Parent(Coefficient(f,0));
+	PS<q> := PowerSeriesRing(S,qprecbyp);
+	
+	Upf := PS!0;
+	for i:=0 to qprecbyp-1 do
+		Upf := Upf + Coefficient(f,p*i)*q^i;
+	end for;
+		
+	return Upf;
+
+end function;
+
+// Input: basis "ord" for ordinary subspace, as list of power series to precision qprec
+// with coefficients in IntegerRing(p^mdash); POWER SERIES f to suitably large q-adic
+// precision and coefficients in IntegerRing(p^mdash) lying in ordinary space over Zp.
+// Output: Vector giving f as linear combination of basis elements.
+// Note: The code will CRASH if one requires coefficients in Qp which are not integral.
+
+function OrdinaryFormInBasis(ord,f)
+
+	dimord:=#ord;
+	g:=f;
+	
+	S:=Parent(Coefficient(f,0)); // IntegerRing()
+	ZZ:=Integers();
+	fvec:=RSpace(S,dimord)!0;
+		
+	for j:=1 to dimord do
+		ejleadingpos:=Valuation(ord[j]);
+		ejleadingcoeff:=Coefficient(ord[j],ejleadingpos);
+		fvec[j]:=S!((ZZ!Coefficient(g,ejleadingpos))/(ZZ!ejleadingcoeff));
+		g:=g - fvec[j]*ord[j];
+	end for;
+	
+	if g ne 0 then
+		print "Error in OrdFormInBasis: form NOT l.c. of basis!";
+		print g;
+	end if;
+
+	return fvec;
+
+end function;
+
+// Input: basis "ord" for ordinary subspace in level p*N, as list of power series to precision qprec
+// with coefficients in IntegerRing(p^mdash), and prime p.
+// Output: matrix for U_p operator.
+// Note: Also used for prime l dividing N.
+
+function AtkinMatrix(ord,p)
+
+	S:=Parent(Coefficient(ord[1],0)); // IntegerRing(p^mdash)
+	orddim:=#ord;
+	Tp:=ZeroMatrix(S,orddim,orddim);
+	
+	for i:=1 to orddim do
+		f := ord[i];
+		Tpf:=Up(f,p); 
+		TpfVEC:=OrdinaryFormInBasis(ord,Tpf);
+		Tp[i]:=TpfVEC;
+	end for;
+	
+	return Tp;
+
+end function;
+
+// Input: matrix A over IntegerRing() for U_p on the space of ordinary
+// modular forms of level p*N.
+// Output: the "power" so that U_p^power is the ordinary projection map modulo p^m.
+// Note: this also works if A is the matrix modulo p^m for U_p on overconvergent
+// modular forms.
+
+function ProjectionPower(A,p,m)
+
+	dim:=NumberOfRows(A);
+	Ap:=MatrixRing(GF(p),dim)!A;
+	Pp:=ReverseCharacteristicPolynomial(Ap);
+	
+	facts := Factorisation(Pp);
+	b := 1;
+	for f in facts do
+		g := f[1];
+		b := LCM(b,Degree(g));
+	end for;
+
+	// return (p^(m-1))*(p^b - 1); not completely sure why one needs p^m rather than just p^(m-1).
+	return p^m*(p^b-1);
+
+end function;
+
+
+
+// Computes d^-1(f^[p]) for d = q d/dq and f the q-expansion of
+// a modular form represented as a power series.
+
+function THETAinv(f,p)
+
+	R := Parent(f);
+	h := R!0;
+	q := R.1;
+	qprec:=Precision(Parent(f));
+
+	for i:=0 to qprec-1 do
+		if ((i mod p) ne 0) then
+			h := h + (Coefficient(f,i)/i)*q^i;
+		end if;
+	end for;
+
+	return h;
+
+end function;
+
+
+
+
+
+
+// ********* Version A: factoring projection into three ***************
+
+
+// Input: prime p, N coprime to p, weight 0 <= k < p-1, integer m >= 1, and even positive weightbound.
+// Output: ord,E,UpaKatzExp,UpbOnOrd,mdash,qprec.
+// Here "ord" is the ordinary subspace over IntegerRing(p^mdash) modulo q^qprec; E is the Katz basis;
+// and the other two outputs are matrices described in function.
+// Note: this is version "A", which factors the projection into three.
+
+function OrdinarySubspace_A(p,N,k,m,weightbound) // **
+
+	if (k ge EisWeight(p)) or (k lt 0) then
+		print "Implementation assumes 0 <= k < (p-1)!";
+		return 0;
+	end if;
+
+	// Find matrix for U_p on Katz expansions
+	
+	time Aseq,e,mdash:=UpGj(p,N,[k],m,weightbound); // **
+	A:=Aseq[1];
+	print "Computed matrix A and Katz basis e."; 
+	if N gt 1 then
+		E:=MatrixToList(e,p,mdash); // Feb 20: Changed m to mdash here
+	else
+		E:=e;
+	end if;
+	
+	// Compute basis for ordinary space and map U_p^a to this space
+	
+	rsns:=2; // reciprocal of smallest non-zero slope
+	// Buzzard's conjecture, e.g., the case for p = 5 and N = 37.
+	a:=rsns*m;
+	
+	print "Computing matrix for U_p^a on Katz expansions ..."; 
+	time UpaKatzExp:=A^a;
+	print "Finding echelon form of matrix ... ";
+	time UpaKatzExpEch:=EchelonForm(UpaKatzExp);
+	print "Extracting rows of echelon form as q-expansions ...";
+	// this is a basis for the ordinary space
+	ord:=[];
+	// qprec:=NumberOfColumns(e); // For N = 1 e is a list
+	qprec:=Precision(Parent(E[1]));
+	ell:=NumberOfRows(A);
+	for i:=1 to ell do
+		if UpaKatzExpEch[i] ne 0 then // just take non-zero rows
+			QK := KatzToqExp(E,UpaKatzExpEch[i]);
+			if QK ne 0 then
+				Append(~ord,QK);
+			end if;
+		end if;
+	end for;
+	
+	// Compute matrix for U_p on ordinary space
+	
+	UpOnOrd:=AtkinMatrix(ord,p);
+	projpower:=ProjectionPower(UpOnOrd,p,m);
+	print "Computing matrix for U_p^(projpower - a - 1) on ordinary space ... ";
+	time UpbOnOrd:=UpOnOrd^(projpower - a - 1);
+
+	// WARNING: the basis "ord" may contain stray rows divisible by something like p^(m-1).
+	
+	/* The idea is that we factor the map U_p^projpower on 1/(p+1)-overconvergent forms as
+	
+	U_p^(projpower - a - 1) \circ U_p^a \circ U_p acting on
+	
+	basis for ordinary space \\ Katz expansions of p/(p+1)-OC forms \\ q-expansions of 1/(p+1)-OC forms
+	
+	*/
+	
+	return ord,E,UpaKatzExp,UpbOnOrd,mdash,qprec;
+	
+end function;
+
+
+// Input: ord,E,UpaKatzExp,UpbOnOrd as output by OrdinaryProjection_A, and in addition
+// a 1/(p+1)-OC form H given to same precision as elements in ord, i.e., over
+// IntegerRing(p^mdash) and modulo "q^elldashp".
+// Output: Ordinary projection of H as q-expansion modulo p^m and q^elldash.
+
+function SingleOrdinaryProjection_A(ord,E,UpaKatzExp,UpbOnOrd,H,p,m,nu,bugfix)
+
+	// U_p on q-expansion, leaving precision ell^dash.
+	UpH := H;
+	for i := 0 to nu do
+		UpH:=Up(UpH,p); 
+	end for;
+	
+	// WARNING: Some precision is lost for small primes here! Should fix this!
+	loss := Floor(nu*(ap(p)-1)/(p+1))+1;
+	UpH := p^(loss)*UpH;
+	print "WARNING! Divide result by p^", loss;
+	
+	// Convert to Katz Expansion and apply UpaKatzExp
+	
+	UpHKatzExp:=qExpToKatz(UpH,E,p,m);
+	// *** BUG ***
+	if bugfix eq true then
+		UpHKatzExpa:=VMM(UpHKatzExp,UpaKatzExp);
+	else
+		UpHKatzExpa:=UpHKatzExp*UpaKatzExp;
+	end if;
+	  
+	// Recover as q-expansion
+	
+	UpHa:=KatzToqExp(E,UpHKatzExpa); // this lies in the ordinary space
+	
+	/* 
+
+	Since the ordinary space is by construction the rows in the echelon
+	form of UpaHKatzExp, and also UpHKatzExpa is just by construction some
+	linear combination of the rows of UPaHKatzExp, you should be able to
+	deduce UpHaVEC directly without using OrdinaryFormInBasis here. 
+ 	
+	*/
+	
+	// Write w.r.t. basis for ordinary space
+	
+	UpHaVEC:=OrdinaryFormInBasis(ord,UpHa);
+	
+	// Apply UpbOnOrd to get e_ord(h) w.r.t. basis
+	
+	// *** BUG *** : smaller matrix here so may be fine
+	if bugfix eq true then
+		HordVEC:=VMM(UpHaVEC,UpbOnOrd);
+	else
+		HordVEC:=UpHaVEC*UpbOnOrd;
+	end if;
+	
+	// Recover as q-expansion
+	
+	Hord:=&+[HordVEC[i]*ord[i]: i in [1 .. #ord]];
+	
+	return Hord;
+	
+end function;
+
+
+// Input: g and h are MODULAR FORMS with coefficients in Z.
+// The other inputs are as output by OrdinarySubspace_A
+// Output: e_ord(d^(-1)(g^[p]) x h) modulo (p^m,q^qprec), where "qprec = elldash".
+// Note: the coefficients are in IntegerRing(p^m).
+
+function Single_eordgh_A(ord,E,UpaKatzExp,UpbOnOrd,g,h,p,m,mdash,nu,qprec,bugfix)
+
+	gp:=PowerSeriesRing(IntegerRing(p^mdash),qprec*p^(nu))!PowerSeries(g,qprec*p^(nu));
+	print "Computed f up to precision ", qprec*p^(nu);
+	hp:=PowerSeriesRing(IntegerRing(p^mdash),qprec*p^(nu))!PowerSeries(h,qprec*p^(nu));
+	print "Computed g up to precision ", qprec*p^(nu);
+
+	H:=THETAinv(gp,p)*hp; // CHECK THIS IS CORRECT WAY AROUND.
+	print "Done with theta";
+	
+	Hord:=SingleOrdinaryProjection_A(ord,E,UpaKatzExp,UpbOnOrd,H,p,m,nu,bugfix);
+	
+	return Hord;
+
+end function;
+
+
+// ************** End of Version A code *******************
+
+
+
+
+
+
+
+// ********* Version B: factoring projection into two ***************
+
+// Input: prime p, N coprime to p, weight 0 <= k < EisWeight(p), integer m >= 1, and even positive weightbound.
+// Output: ord,E,UpaKatzExp,mdash,qprec.
+// Here "ord" is the ordinary subspace over IntegerRing(p^mdash) modulo q^qprec; E is the Katz basis;
+// and the other output is a matrix described in function.
+// Note: this is version "B", which factors the projection into two - simpler but slower asymptotically
+  
+function OrdinarySubspace_B(p,N,k,m,weightbound)
+
+	if (k ge EisWeight(p)) or (k lt 0) then
+		print "Implementation assumes 0 <= k < (p-1)!";
+		return 0;
+	end if;
+
+	// Find matrix for U_p on Katz expansions
+
+	time Aseq,e,mdash:=UpGj(p,N,[k],m,weightbound); // **
+	A:=Aseq[1];
+	print "Computed matrix A and Katz basis e."; 
+	if N gt 1 then
+		E:=MatrixToList(e,p,mdash); // Feb 20: Changed m to mdash here
+	else
+		E:=e;
+	end if;
+	
+	// Compute U_p^a where a = (projpower - 1) on Katz expansions.
+	
+	print "Computing a ...";
+	time projpower:=ProjectionPower(A,p,m);
+	print "Computing matrix for U_p^a on Katz expansions ..."; 
+	time UpaKatzExp:=A^(projpower - 1);
+	print "Computing Echelon form of matrix ... ";
+	time UpaKatzExpEch:=EchelonForm(UpaKatzExp);
+	
+	// this is a basis for the ordinary space
+	print "Extracting rows of echelon form as q-expansions ...";
+	ord:=[];
+	// qprec:=NumberOfColumns(e);
+	qprec:=Precision(Parent(E[1]));
+	ell:=NumberOfRows(A);
+	for i:=1 to ell do
+		if UpaKatzExpEch[i] ne 0 then // just take non-zero rows
+			QK := KatzToqExp(E,UpaKatzExpEch[i]);
+			if QK ne 0 then
+				Append(~ord,QK);
+			end if;
+		end if;
+	end for;
+
+	/* Here we factor U_p^projpower on 1/(p+1)-OC forms as
+	
+	U_p^(projpower - 1) \\ circ U_p acting on
+	
+	Katz expansions of p/(p+1)-OC forms \\ q-expansions of 1/(p+1)-OC forms
+	
+	*/
+
+	return ord,E,UpaKatzExp,mdash,qprec;
+
+end function;
+
+// Input: ord,E,UpaKatzExp as output by OrdinaryProjection_B, and in addition
+// a 1/(p+1)-OC form H given to same precision as elements in ord, i.e., over
+// IntegerRing(p^mdash) and modulo "q^elldashp".
+// Output: Ordinary projection of H as q-expansion modulo p^m and q^elldash.
+
+function SingleOrdinaryProjection_B(ord,E,UpaKatzExp,H,p,m,nu,bugfix)
+
+	// U_p on q-expansion, leaving precision ell^dash.
+	UpH := H;
+	for i := 0 to nu do
+		UpH:=Up(UpH,p); 
+	end for;
+	
+	// WARNING: Some precision is lost for small primes here! Should fix this!
+	loss := Floor(nu*(ap(p)-1)/(p+1))+1;
+	UpH := p^(loss)*UpH;
+	print "WARNING! Divide result by p^", loss;
+				
+	// Convert to Katz Expansion and apply UpaKatzExp
+		
+	UpHKatzExp:=qExpToKatz(UpH,E,p,m);
+		
+	// *** BUG
+	if bugfix eq true then
+		HordKatzExp:=VMM(UpHKatzExp,UpaKatzExp);
+	else
+		HordKatzExp:=UpHKatzExp*UpaKatzExp;
+	end if;
+		
+	// Recover as q-expansion
+	
+	Hord:=KatzToqExp(E,HordKatzExp); // this lies in the ordinary space
+	
+	return Hord;
+	
+end function;
+
+// Input: g and h are MODULAR FORMS with coefficients in Z.
+// The other inputs are as output by OrdinarySubspace_B
+// Output: e_ord(d^(-1)(g^[p]) x h) modulo (p^m,q^qprec), where "qprec = elldash".
+// Note: the coefficients are in IntegerRing(p^m).
+
+function Single_eordgh_B(ord,E,UpaKatzExp,g,h,p,m,mdash,nu,qprec,bugfix)
+
+	gp:=PowerSeriesRing(IntegerRing(p^mdash),qprec*p^(nu))!PowerSeries(g,qprec*p^(nu)); // Fix this!
+	hp:=PowerSeriesRing(IntegerRing(p^mdash),qprec*p^(nu))!PowerSeries(h,qprec*p^(nu)); // Fix this!
+	
+	H:=THETAinv(gp,p)*hp; // CHECK THIS IS CORRECT WAY AROUND.
+	
+	// return H;
+	
+	Hord:=SingleOrdinaryProjection_B(ord,E,UpaKatzExp,H,p,m,nu,bugfix);
+	
+	return Hord;
+
+end function;
+
+// ************** End of Version B code *******************
+
+
+
+
+
+
+// Input: MODULAR FORMS g of weight 2 and h of EVEN weight with trivial character, 
+// prime p and integer m>=1 - ver is "A" or "B" -  and
+// weightbound >=4 is an even integer (default should be 6).
+// Output: e_ord(d^(-1)(g^[p]) x h) mod p^m and sufficient power of q.
+// Note: "A": this factors U_p into three (asymptotically quicker)
+// "B": this factors U_p into two (simpler).
+// Note: in fact it returns a list for each g in glist.
+
+function Several_eordgh(glist,h,p,m,ver,weightbound, bugfix) // **
+
+	Ng:=Level(glist[1]);
+	v := Valuation(Ng,p);
+	if v eq 0 then // p does not divide N
+		N:=Ng;
+	else // f of level Np
+		assert (v gt 0);
+		N:=Integers()!(Ng/p^v);
+	end if;
+	print "Tame level N = ", N;
+	k:=Weight(h); 	
+
+	Hords:=[];
+	if ver eq "A" then
+		ord,E,UpaKatzExp,UpbOnOrd,mdash,qprec:=OrdinarySubspace_A(p,N,k,m,weightbound);
+		for g in glist do
+			Hord:=Single_eordgh_A(ord,E,UpaKatzExp,UpbOnOrd,g,h,p,m,mdash,v,qprec,bugfix);
+			Append(~Hords,Hord);
+		end for;
+	else // ver "B"
+		ord,E,UpaKatzExp,mdash,qprec:=OrdinarySubspace_B(p,N,k,m,weightbound);
+		for g in glist do
+			Hord:=Single_eordgh_B(ord,E,UpaKatzExp,g,h,p,m,mdash,v,qprec,bugfix);
+			Append(~Hords,Hord);
+		end for;
+	end if;
+	
+	return Hords,ord;
+
+end function;
+
+
+// For a single g and h.
+
+function eordgh(g,h,p,m:ver:="A",weightbound:=6,bugfix:=true)
+
+	Hords,ord:=Several_eordgh([g],h,p,m,ver,weightbound,bugfix);
+
+	return Hords[1],ord;
+
+end function;
+
+
+// ------------------------------------------------------------------------
+// --|             Rankin triple product p-adic L-functions             |--
+// ------------------------------------------------------------------------
+
+
+
+// Input: Ordinary subspace ord, prime l, level N
+// Output: Matrix of Hecke operator T_l on ordinary subspace.
+// 
+
+function HeckeOrd(ord,l,N)
+
+	d := #ord;	
+	ell := Precision(Parent(ord[1]));
+	M := ZeroMatrix(Rationals(),d,Floor((ell-1)/l)+1);
+
+	for i := 1 to d do
+		for j := 0 to Floor((ell-1)/l) do
+			M[i,j+1] := Integers()!Coefficient(ord[i],l*j);
+			if ((N mod l) ne 0) and ((j mod l) eq 0) then
+				 M[i,j+1] := M[i,j+1] + Integers()!(l*Coefficient(ord[i],Integers()!(j/l)));
+			end if;
+		end for;
+	end for;
+		
+	// Now solve M := A*Ord
+
+	A := ZeroMatrix(Rationals(),d,d);
+	
+	for i := 1 to d do
+		Mi := M[i];		
+		for j := 1 to d do
+			ordj := RSpace(Rationals(),ell)![Integers()!Coefficient(ord[j],l): l in [0 .. ell-1]];
+			ordjleadpos:=LeadingPosition(ordj);
+			lj:=Integers()!ordj[ordjleadpos];
+			A[i,j] := (Integers()!Mi[ordjleadpos])/lj;
+			for k := 1 to d do
+				Mi[k] := Mi[k] - A[i,j]*ordj[k];
+			end for;
+		end for;
+	end for;	
+	
+	return A;
+
+end function;
+
+// Input: Ordinary projection Hord, ordinary subspace ord, classical newform g
+// Output: The coefficient of g in the decomposition of Hord
+// Note: Currently all this code only works for newforms f,g weight 2, where Hord=eordgh(f,g,p,m). 
+
+function gPart(Hord,ord,g)
+
+	p := Factorisation(Modulus(Parent(Coefficient(Hord,0))))[1][1];
+	m := Valuation(Modulus(Parent(Coefficient(Hord,0))),p);
+	N := Level(g);
+	d := #ord;
+	S := IntegerRing(p^m);
+
+
+	l := 1;
+	par := false;
+	lambda := S!0;
+	H := ZeroMatrix(S,d,d);
+	while par eq false do
+		l := NextPrime(l);
+		if l ne p then
+			H := ChangeRing(HeckeOrd(ord,l,N),S);
+			P := CharacteristicPolynomial(H);
+			lambda := S!Coefficient(g,l);
+			assert Evaluate(P,lambda) eq 0; // Sanity check that lambda is indeed a root of P.
+			if Evaluate(Derivative(P),lambda) ne 0 then
+				par := true;
+			end if;
+		end if;
+	end while;
+
+	// Now project onto the g-part of the ordinary subspace.
+	HH := qExpToKatz(Hord,ord,p,m);
+	P := CharacteristicPolynomial(H);
+	x := Parent(P).1;
+	Q := ExactQuotient(P,(x-lambda));
+	C := Evaluate(Derivative(P),lambda);
+	Proj := Evaluate(Q,H);
+		
+	Hord := 0;
+	
+	for i := 1 to d do
+		sum := 0;
+		for j := 1 to d do
+			sum := sum + Proj[j,i]*HH[j];
+		end for;
+		Hord := Hord + sum*ord[i];
+	end for;
+	
+	lambda:=Coefficient(Hord,1);
+	
+	return S! (Integers()!lambda/(Integers()!C));
+	
+end function;
+
+
+// Input: Integers s,m,d with d and m positive.
+// Output: Small height integer polynomial of degree d which has s as a roots modulo m.
+// Note: 1. Algorithm may fail: in which case increase precision of real field.
+// 2. If d too small the polynomial output is of no interest.
+
+function AlgNumRec(s,m,d)
+
+	ZZ:=Integers();
+	Zm:=IntegerRing(m);
+	RR:=RealField(100);
+	X:=ZeroMatrix(RR,d+2,d+2);
+
+	for i:=0 to d do
+		X[i+1,1]:=ZZ!((Zm!s)^i);
+	end for;
+	X[d+2][1]:=m;
+
+	for j:=1 to d+1 do
+		X[j,j+1]:=1;
+	end for;
+
+	Y,T:=LLL(X);
+
+	PolZ<t>:=PolynomialRing(ZZ);
+
+	/*      First row of Y contains [1,1,0,0,..,0]
+	 Second row is /pm [a_0',-a_0'',-a_1,...,-a_d] (*)
+	 where a_0' = Floor(a_0/2) (or ceiling). Note
+	 [0,a_0,a_1,...,a_d] is a short vector but (*)
+	 is a little shorter */
+
+	P:=Floor(Y[2][1] - Y[2][2]);
+	for j:=3 to d+2 do
+		P:=P - Floor(Y[2][j])*t^(j-2);
+	end for;
+
+	if ((Evaluate(P,s) mod m) ne 0) then
+		print "AlgNumRec Failed: s not root of P mod m!";
+	end if;
+
+	return P;
+
+end function;
