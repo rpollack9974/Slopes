@@ -50,8 +50,6 @@ def test_on_rim(p,comp):
     g=ghost(p,1)
     v2 = slopes_on_rim(1,p,comp)
     v1 = g.wadic_slopes(comp,num=len(v2))
-    print v1
-    print v2    
     return v1 == v2
 	
 
