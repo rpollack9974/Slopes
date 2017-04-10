@@ -1,20 +1,23 @@
 function slopes_on_rim(p,comp)
     K := CyclotomicField((p-1)*p);
-	G := DirichletGroup(p^2,K);
-	psi := G.1;
-	chi := psi^(p-1);
+    G := DirichletGroup(p^2,K);
+    psi := G.1;
+    chi := psi^(p-1);
     OK := RingOfIntegers(K);
-	pp := Factorization(p*OK)[1][1];
-	e := RamificationDegree(pp);
-	omega := psi^p;
-	r := 0;
-    vals := []
-    for a in range(1,p-2) do
+    pp := Factorization(p*OK)[1][1];
+    e := RamificationDegree(pp);
+    omega := psi^p;
+    r := 0;
+    vals := [];
+    for a in [1..p-1] do
         vals := vals cat [Valuation(omega(a)^r-a,pp)];
+    end for;
     mv := Min(vals);
     while mv eq 0 do
         r := r+1;
-        vals := vals cat [Valuation(omega(a)^r-a,pp)];
+        for a in [1..p-1] do
+            vals := vals cat [Valuation(omega(a)^r-a,pp)];
+        end for;
         mv := Min(vals);
     end while;
 	omega := omega^r;
