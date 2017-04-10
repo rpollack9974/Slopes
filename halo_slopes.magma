@@ -4,9 +4,11 @@ function slopes_on_rim(p,comp)
     psi := G.1;
     chi := psi^(p-1);
     OK := RingOfIntegers(K);
+    print "Factoring ",p;    
     pp := Factorization(p*OK)[1][1];
     e := RamificationDegree(pp);
     omega := psi^p;
+    print "Finding omega";
     r := 0;
     vals := [];
     for a in [1..p-1] do
@@ -14,6 +16,7 @@ function slopes_on_rim(p,comp)
     end for;
     mv := Min(vals);
     while mv eq 0 do
+        vals := [];    
         r := r+1;
         for a in [1..p-1] do
             vals := vals cat [Valuation(omega(a)^r-a,pp)];
@@ -27,9 +30,9 @@ function slopes_on_rim(p,comp)
 		print "Computing the ",j,"-th modular symbol space";
 		M := CuspidalSubspace(ModularSymbols(chi*omega^(-2*j),2,1));
 		print "---computing Hecke";
-		f := Hecke_polynomial(M,p);
+		f := HeckePolynomial(M,p);
         NP := NewtonPolygon(f,pp);
-        seeds := seeds cat slopes_of_NP(NP);
+        seeds := seeds cat [slopes_of_NP(NP)];
         print slopes_of_NP(NP);
     end for;
 
