@@ -2,21 +2,27 @@ function slopes_on_rim(p,comp)
     K := CyclotomicField((p-1)*p);
 	G := DirichletGroup(p^2,K);
 	psi := G.1;
-	chi = psi^(p-1);
+	chi := psi^(p-1);
     OK := RingOfIntegers(K);
 	pp := Factorization(p*OK)[1][1];
 	e := RamificationDegree(pp);
 	omega := psi^p;
 	r := 0;
-    while Valuation(omega(a)^r-a,pp) eq 0 do
+    vals := []
+    for a in range(1,p-2) do
+        vals := vals cat [Valuation(omega(a)^r-a,pp)];
+    mv := Min(vals);
+    while mv eq 0 do
         r := r+1;
+        vals := vals cat [Valuation(omega(a)^r-a,pp)];
+        mv := Min(vals);
     end while;
 	omega := omega^r;
 	
     seeds:= [];
 	for j in [0..(p-3)/2] do
 		print "Computing the ",j,"-th modular symbol space";
-		M := ModularSymbols((chi*omega^(-2*j),2,1,base_ring=K).cuspidal_subspace();
+		M := CuspidalSubspace(ModularSymbols(chi*omega^(-2*j),2,1));
 		print "---computing Hecke";
 		f := Hecke_polynomial(M,p);
         NP := NewtonPolygon(f,pp);
