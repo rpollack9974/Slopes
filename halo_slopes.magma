@@ -27,29 +27,34 @@ function slopes_on_rim(p,comp)
 	
     seeds:= [];
 	for j in [0..(p-3)/2] do
-		print "Computing the ",j,"-th modular symbol space";
-		M := CuspidalSubspace(ModularSymbols(chi*omega^(-2*j),2,1));
-		print "---computing Hecke";
-		f := HeckePolynomial(M,p);
+        print "Computing the ",j,"-th modular symbol space";
+        M := CuspidalSubspace(ModularSymbols(chi*omega^(2*j),2,1));
+        print "---computing Hecke";
+        f := HeckePolynomial(M,p);
+        f := Reverse(f);
         NP := NewtonPolygon(f,pp);
         seeds := seeds cat [slopes_of_NP(NP)];
         print slopes_of_NP(NP);
     end for;
 
+    all_slopes := [];
+    for comp in [0..p-2] do
+        if comp mod 2 eq 0 then
+            for a in [1..(p-1)/2] do
+                slopes := slopes cat [a*(p-1)]; //eisenstein stuff
+            end for;
+            for j in [0..(p-3)/2] do
+                i := (comp-2*j) mod (p-1);
+                if i eq 0 then
+                    i := p-1;
+                i := i div 2;
+                for s in [1..#seeds[i]] do
+                    slopes := slopes cat [s+j];
+                end for;
+            end for;
+            all_slopes := all_slopes cat [slopes];
+        end if;
+    end for;
 
-//		v = [(j-v[a]) for a in range(len(v))]
-//#		print "shifted",v
-//		v = [v[a]*(p-1) for a in range(len(v))]
-//#		print "scaled",v 
-//		slopes = slopes + v
-//		slopes.sort()
-//#		print "Slopes so far:",slopes
-	
-
-//    slopes := [];
-//    for a in [1..(p-1)/2] do
-//        slopes := slopes cat [a*(p-1)]; //eisenstein stuff
-//    end for;
-
-	return seeds;
+    return Sort(all_slopes);
 end function;
