@@ -1,4 +1,4 @@
-function slopes_on_rim(p,comp)
+function slopes_on_rim(p)
     K := CyclotomicField((p-1)*p);
     G := DirichletGroup(p^2,K);
     psi := G.1;
@@ -37,24 +37,26 @@ function slopes_on_rim(p,comp)
         print slopes_of_NP(NP);
     end for;
 
-    all_slopes := [];
+    all_slopes := [**];
     for comp in [0..p-2] do
         if comp mod 2 eq 0 then
+            sl := [];
             for a in [1..(p-1)/2] do
-                slopes := slopes cat [a*(p-1)]; //eisenstein stuff
+                sl := sl cat [a*(p-1)]; //eisenstein stuff
             end for;
             for j in [0..(p-3)/2] do
                 i := (comp-2*j) mod (p-1);
                 if i eq 0 then
                     i := p-1;
+                end if;
                 i := i div 2;
                 for s in [1..#seeds[i]] do
-                    slopes := slopes cat [s+j];
+                    sl := sl cat [seeds[i][s]+j*(p-1)];
                 end for;
             end for;
-            all_slopes := all_slopes cat [slopes];
+            all_slopes := all_slopes cat [*[*comp,Sort(sl)*]*];
         end if;
     end for;
 
-    return Sort(all_slopes);
+    return all_slopes;
 end function;
