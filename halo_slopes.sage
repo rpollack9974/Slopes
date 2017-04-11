@@ -1,5 +1,18 @@
 from sage.geometry.newton_polygon import NewtonPolygon
 
+def write_to_file(filename,line):
+    """
+    Writes the string line to the file ``filename``.
+
+    Input:
+
+    -   ``filename`` -- string
+    -   ``line`` -- string
+    """
+    f = open(filename,'a')
+    f.write(line)
+    f.close()
+
 def slopes_on_rim(p):
     G = DirichletGroup(p^2)
     psi = G.0
@@ -53,3 +66,19 @@ def slopes_on_rim(p):
             all_slopes += [[comp,sl]]
 
     return all_slopes
+
+
+def test_on_rim(p):
+    v1 = slopes_on_rim(p)
+    g=ghost(p,1)
+    passed = True
+    j=0
+    while passed and j<(p-1)/2:
+        v2 = g.wadic_slopes(2*j,num=len(v1[j][1]))
+        passed = passed and (v1[j][1] == v2)
+        if not passed:
+            print "Failed on component",2*j
+        j=j+1
+    write_to_file("rim_tests",str(p)+": passed\n")
+
+    return passed
