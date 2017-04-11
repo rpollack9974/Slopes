@@ -12,7 +12,7 @@ function slopes_of_NP(NP)
 end function;
 
 function slopes(p,N,k,prec)
-	f := OverconvergentHeckeSeries(p,N,k,prec);
+	f := HeckeSeries(p,N,k,prec);
 	return slopes_of_NP(NewtonPolygon(f));
 end function;
 
