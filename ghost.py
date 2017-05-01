@@ -30,7 +30,26 @@ class ghost(SageObject):
 		and returns the w-adic slopes on the component comp.
 		(Components are represented by even integers between 0 and p-2.)
 
-		To access the actual ghost zeroes type:
+		A fancier commend is:
+
+		3) global_halo
+
+		This draws a picture of the ghost spectral curve.  To call this function type:
+
+			g.global_halo(comp,sheets,max_v)
+
+		where comp is again the component, sheets is the number of 'sheets' in the picture, 
+		and max_v is the maximum valuation of weights used.  For example, for p=2 and N=1,
+
+			g.global_halo(0,10,10)
+
+		will draw the first 10 sheets of the global halo over the region of weight space 
+		for weights with (non-integral) valuation between 0 and 10.  
+
+	 	There is also an optional argument 'central_wt' where one can change the weight we
+	 	are expanding around.
+
+		Lastly, to access the actual ghost zeroes type:
 
 			g[comp][i]
 
@@ -95,27 +114,50 @@ class ghost(SageObject):
 		self.compute_ghost_series(num_coefs=num_coefs)
 
 	def __repr__(self):
+		"""Returns the string <Ghost series for p and N>"""
 		return "Ghost series for p="+str(self.p)+" and N="+str(self.N)
 
 	def __getitem__(self,a):
 		"""Returns the power series (in shell form) on a-th component"""
 		return self.series[a]
 
-	def ghost_zeroes(self,comp,i):
-		"""Returns a list of the ghost series of the i-th coefficient on component comp"""
-		return self.series[comp][i]
+	def zeroes(self,j,comp):
+		"""Returns a list of the zeroes (without multiplicities) of the j-th coefficient in 
+		component comp"""
+		return [g[comp][j][a][0] for a in range(len(g[comp][j]))]
+
+	def mult(self,j,comp,z):
+		"""returns the multiplicity of z as a zero of j-th coefficient on component comp"""
+		zs = g.zeroes(j,comp)
+		assert z in zs, "Not a zero!"
+		i = zs.index(z)
+		return g[comp][j][i][1]
 
 	def num_coefs(self,comp):
 		"""Returns the number of coeffcients computed on component comp"""
 		return len(self[comp])
 
-	def slopes(self,k,num=None):
-		"""Returns the slopes in weight k --- num-many or all computed if term==None
+	def first_occurrence(self,comp,z):
+		"""Returns the index of the first occurrence of z as a ghost zero
+			(this could be computed as just a dimension formula but we just read it
+			off of the ghost series)"""
+		j=0
+		while j<g.num_coefs(comp):
+			if z in g.zeroes(j,comp):
+				return j
+			else:
+				j = j+1
+		assert j<g.num_coefs(comp), "Not a zero"
 
-		HACKING IN THIS ONE ON HOW MANY TERMS TO USE"""
+	def slopes(self,k,num=None,force_comp=None):
+		"""Returns the slopes in weight k --- num-many or all computed if term==None"""
+
 		NP = []
 		p=self.p
-		comp=k%(p-1)
+		if force_comp==None:
+			comp=k%(p-1)
+		else:
+			comp=force_comp
 		if num==None:
 			d = self.num_coefs(comp)
 		else:
@@ -130,17 +172,15 @@ class ghost(SageObject):
 		for i in range(d):
 			y = 0
 			for ss_wt in self[comp][i]:
-				if ss_wt[0] == "p":
-					y += ss_wt[1]
-				else:
-					k_ss = ss_wt[0]
-					mult = ss_wt[1]
-						
-				#### added by john 10/17, see form_ghost_shell for instructions
-				if k_ss >= 0:
-					y += (valuation(k-k_ss,p)+e)*mult
-				if k_ss < 0:
+				mult = ss_wt[1]
+				k_ss = ss_wt[0]
+				if k_ss == "p":
 					y += mult
+				else:		
+					if k_ss >= 0:
+						y += (valuation(k-k_ss,p)+e)*mult
+					if k_ss < 0:
+						y += mult
 			NP += [(i,y)]
 
 		if num==None:
@@ -148,7 +188,7 @@ class ghost(SageObject):
 		else:
 			return NewtonPolygon(NP).slopes()[0:num]
 
-	def multiplicity(self,comp,i):
+	def lambdainv(self,comp,i):
 		"""Returns the total number of zeroes with multiplicity in the i-th coefficient
 			on component comp"""
 		return sum([self[comp][i][a][1] for a in range(len(self[comp][i]))])
@@ -161,7 +201,7 @@ class ghost(SageObject):
 			if self.num_coefs(comp)<num+10:
 				self.compute_ghost_series(num_coefs=num+10)
 
-		NP = [(a,self.multiplicity(comp,a)) for a in range(self.num_coefs(comp))]
+		NP = [(a,self.lambdainv(comp,a)) for a in range(self.num_coefs(comp))]
 		if num!=None:
 			return NewtonPolygon(NP).slopes()[0:num]
 		else:
@@ -181,14 +221,126 @@ class ghost(SageObject):
 			new_ghost[0][j] += mod_zeros[j]
 		self.series=new_ghost
 
+	#############################
+	#SPECTRAL CURVE PICTURE STUFF
+	#############################
+
+	## i = index
+	## v = valuation (non-integral)
+	## comp = component
+	## Return (r,s) where r = total ghost zeroes (with mult) > v
+	## and s = sum v_p(w) where w is a ghost zero with v_p(w) < v. Thus
+	## on the valuation v_p(w) = v we see v_p(a_i) = v*r + s.
+	def zero_val_count(self,comp,i,v,central_wt=0):
+		assert floor(v)!=v, "Use non-integral valuations"
+		p = self.p
+		ai = self[comp][i]
+		if p == 2:
+			e = 2  ## this is the extra valuation from changing from k to w
+		else:
+			e = 1
+		r= sum([a[1] for a in ai if ZZ(a[0]-central_wt).valuation(p)+e > v])
+		s= sum([(ZZ(a[0]-central_wt).valuation(p)+ e)*a[1] for a in ai if ZZ(a[0]-central_wt).valuation(p)+e < v])
+		return (r,s)
+
+	## v = valuation
+	## Returns a list (r_i,s_i) such that (i,r_i*v+s_i) is the i-th Newton point of U_p in valuation v = v2(wt-central_wt)
+	## added 5/15/16: ability to use a central_wt
+	def newton_points_at_fixed_valuation(self,comp,v,max_i,central_wt=0):
+		p = self.p
+		return [self.zero_val_count(comp,i,v,central_wt) for i in range(max_i+1)]
+
+	def global_halo_piece(self,comp,v,max_i,central_wt=0):
+		p=self.p
+		max_i = 2*max_i
+		list = self.newton_points_at_fixed_valuation(comp,v,max_i,central_wt)
+		left = NewtonPolygon([(i,list[i][0]*floor(v)+list[i][1]) for i in range(max_i+1)]).slopes()
+		right = NewtonPolygon([(i,list[i][0]*ceil(v)+list[i][1]) for i in range(max_i+1)]).slopes()
+		max_i = max_i/2
+		r = floor(v)
+		spectral = point((0,0))
+		prev = [(r,0),(r+1,0)]
+		linethickness = .1
+		for i in range(max_i):
+			linecolor = 'blue'
+			linethickness = len([j for j in range(max_i) if left[j]==left[i] and right[j] == right[i]])
+			spectral += halo_line((r,left[i]),(r+1,right[i]),linethickness,linecolor,prime=p)
+			prev = [(floor(v),left[i]),(ceil(v),right[i])]
+		return spectral
+
+	## comp = component
+	## sheets = number of sheets computed
+	## max_v = maximal valuation of weights used
+	## min_v (optional) = minimum valuation of weights used
+	## central_wt (optional) = weight placed at center of weight space
+	def global_halo(self,comp,sheets,max_v,min_v=0,central_wt = 0,xaxes=None,yaxes=None):
+		p = self.p
+		max_i = sheets
+		assert floor(min_v)==min_v and floor(max_v)==max_v, "C'mon.  Use an integer for the endpoint"
+		if 2*max_i + 10 > self.num_coefs(comp):
+			g.compute_ghost_series(2*max_i+10)
+		gh = self.global_halo_piece(comp,min_v+0.5,max_i,central_wt)
+		for v in range(min_v+1,max_v):
+			gh +=  self.global_halo_piece(comp,v+0.5,max_i,central_wt)
+		if xaxes != None or yaxes != None:
+			gh.axes_range(0,xaxes,0,yaxes)
+
+		return gh
 
 
 
-def get_modified_zeros(N,max_k):
-### This is a helper function for p=2 and N>1 to modify ghost series
+
+
+
+####Helper function for halos
+
+def halo_line(pt1,pt2,linethickness,linecolor,prime):
+	p = prime
+	r = 10
+	outline = 'dashed'
+	colored = 'white'
+	if p >= 3 or (p == 2 and pt2[0] >= 4):
+		return line([pt1,pt2],thickness=linethickness,color=linecolor) + point(pt1,size=linethickness*r,color=colored,faceted = True,alpha=1,zorder=10) + point(pt2,size=linethickness*r,color=colored,faceted = True,alpha=1,zorder=10)
+	if p == 2 and pt2[0] < 4:
+		return line([pt1,pt2],thickness=linethickness,color=linecolor)
+
+
+        
+
+## Helper functions for p=2 modification
+
+def mults(v):
+	mult_free = list(set(v))
+	mult_free.sort()
+	ans = []
+	for a in mult_free:
+		ans.append([a,v.count(a)])
+	return ans
+ 
+## takes in a list [(a0,d0),(a1,d1),...] where
+## 0 = a0  < a1 < ... and di > 0
+## and returns the correct multiplicity pattern
+## for the weight k = 2 points
+## sage: wt2_slopes_to_mults([(0,7),(1/2,1),(4,3)])
+## [0, 1, 2, 3, 3, 2, 1, 0, 0, 1, 1, 0]
+ 
+def wt2_slopes_to_mults(mult_slope_list):
+	mults = []
+	ell = len(mult_slope_list)
+	for i in range(ell):
+		dimi = mult_slope_list[i][1]
+		for j in range(1,dimi+1):
+			if j < dimi/2:
+				mults.append(j)
+			else:
+				mults.append(dimi+1 - (j+1))
+	return mults
+	
+
 ### returns a list [(-k,m)]_i where we want to make a modification
 ### to the ghost a_i by adding in a zero of mult m at the weight -5^k - 1.
 
+def get_modified_zeros(N,max_k):
 	# get even character of conductor 8
 	chi = [c for c in DirichletGroup(8) if c.conductor() == 8 and c(-1) == 1][0]
 	S = ModularSymbols(DirichletGroup(N*8)(chi),weight=2,sign=1).cuspidal_subspace()
@@ -210,3 +362,39 @@ def get_modified_zeros(N,max_k):
 				#mods[j+start_ind + gap*(k-2)] = [(-2,base_mults[j])]
 	return mods
 
+### fun fact: if N is odd then
+### dim S_{k+1}(Gamma1(8N),e\pm) - dim S_k(Gamma1(8N),e\pm) = N\cdot prod_{\ell \dvd N} (1 + 1/\ell)
+
+def form_p2_modification(N,ghost):
+	new_ghost_0 = [x for x in ghost[0]]
+	new_ghost = [new_ghost_0,[]]
+	max_i = len(new_ghost[0])
+	dim_gaps = N*prod([1 + 1/ell for ell in ZZ(N).prime_factors()])
+	chi = [c for c in DirichletGroup(8) if c.conductor() == 8 and c(-1) == 1][0]
+	dim2 = dimension_cusp_forms(DirichletGroup(8*N)(c),2)
+	max_k = floor((max_i - dim2)/dim_gaps + 2)
+	mod_zeros = get_modified_zeros(N,max_k)
+	for j in range(max_i):
+		new_ghost[0][j] += mod_zeros[j]
+	return new_ghost
+	
+def spread_out(mult_list):
+	new_list = []
+	for x in mult_list:
+		for j in range(x[1]):
+			new_list.append(x[0])
+	return new_list
+	
+def gather_fractional_slopes(slope_data):
+	ret_data = []
+	for y in slope_data:
+		wt = y[0]
+		twist_data = []
+		for z in y[1]:
+			twist = z[0]
+			mult_list = z[1]
+			new_mults = spread_out(mult_list)
+			frac_data = [(x,new_mults.index(x)) for x in set(new_mults) if not x.is_integer()]
+			twist_data.append([twist,frac_data])
+		ret_data.append([wt,twist_data])
+	return ret_data

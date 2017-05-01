@@ -52,7 +52,7 @@ class ghost(SageObject):
 			inds = range(f1(k)+1,f1(k)+f2(k))
 		self.series=ghost_coefs
 
-	def __init__(self,terms=50,rbdata=None,twist=None,p=None,f1=None,f2=None,comp=None):
+	def __init__(self,terms=50,rbdata=None,twist=None,p=None,f1=None,f2=None,comp=None,N=None,new=False):
 		"""To initialize a ghost series one can either:
 				(A) enter 'rbdata' and 'twist'.
 					Here 'rbdata' encodes the relevant info of a fixed rhobar.  Namely,
@@ -65,7 +65,8 @@ class ghost(SageObject):
 				or
 
 				(B) enter 'p', 'f1', 'f2', 'comp' where p is a prime, f1 and f2 are the functions
-					determining the zeroes of the ghost series and comp is the component we are working on.
+					determining the zeroes of the ghost series, that is, f1 corresponds to the dimension
+					of the "tame level space" and f2 to the "new space", and comp is the component we are working on.
 
 				We note that in case (A) the functions f1 and f2 are computed directly from rbdata and
 				stored.
@@ -78,6 +79,17 @@ class ghost(SageObject):
 			def f2(k):
 				return levelNp_pnew_rhobar_dimension_reducible(rbdata,k,t=twist)
 		else:
+			if N!=None:
+				if not new:
+					def f1(k):
+						return dimension_cusp_forms(N,k)
+					def f2(k):
+						return dimension_cusp_forms(N*p,k)-2*f1(k)
+				else:
+					def f1(k):
+						return dimension_new_cusp_forms(N,k)
+					def f2(k):
+						return dimension_new_cusp_forms(N*p,k)
 			self.p=p
 			self.comp=comp
 
@@ -110,17 +122,16 @@ class ghost(SageObject):
 		for i in range(d):
 			y = 0
 			for ss_wt in self[i]:
+				k_ss = ss_wt[0]
+				mult = ss_wt[1]
 				if ss_wt[0] == "p":
 					y += ss_wt[1]
-				else:
-					k_ss = ss_wt[0]
-					mult = ss_wt[1]
-						
-				#### added by john 10/17, see form_ghost_shell for instructions
-				if k_ss >= 0:
-					y += (valuation(k-k_ss,p)+e)*mult
-				if k_ss < 0:
-					y += mult
+				else:						
+					#### added by john 10/17, see form_ghost_shell for instructions
+					if k_ss >= 0:
+						y += (valuation(k-k_ss,p)+e)*mult
+					if k_ss < 0:
+						y += mult
 			NP += [(i,y)]
 #		return NewtonPolygon(NP).slopes()
 		if terms==None:
@@ -206,3 +217,7 @@ def periodic(list,diff):
 		q=(k-k0)/period
 		return list[k0]+q*diff
 	return f
+
+
+
+
