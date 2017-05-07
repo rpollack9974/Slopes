@@ -121,17 +121,17 @@ class ghost(SageObject):
 		"""Returns the power series (in shell form) on a-th component"""
 		return self.series[a]
 
-	def zeroes(self,j,comp):
+	def zeroes(self,comp,j):
 		"""Returns a list of the zeroes (without multiplicities) of the j-th coefficient in 
 		component comp"""
-		return [g[comp][j][a][0] for a in range(len(g[comp][j]))]
+		return [self[comp][j][a][0] for a in range(len(self[comp][j]))]
 
-	def mult(self,j,comp,z):
+	def mult(self,comp,j,z):
 		"""returns the multiplicity of z as a zero of j-th coefficient on component comp"""
-		zs = g.zeroes(j,comp)
+		zs = self.zeroes(comp,j)
 		assert z in zs, "Not a zero!"
 		i = zs.index(z)
-		return g[comp][j][i][1]
+		return self[comp][j][i][1]
 
 	def num_coefs(self,comp):
 		"""Returns the number of coeffcients computed on component comp"""
@@ -142,12 +142,16 @@ class ghost(SageObject):
 			(this could be computed as just a dimension formula but we just read it
 			off of the ghost series)"""
 		j=0
-		while j<g.num_coefs(comp):
-			if z in g.zeroes(j,comp):
+		while j<self.num_coefs(comp):
+			if z in self.zeroes(comp,j):
 				return j
 			else:
 				j = j+1
-		assert j<g.num_coefs(comp), "Not a zero"
+		assert j<self.num_coefs(comp), "Not a zero"
+
+	def y(self,comp,j,k):
+		p = self.p
+		return sum([((ZZ(kss)-k).valuation(p)+1)*self.mult(comp,j,kss) for kss in self.zeroes(comp,j)])
 
 	def slopes(self,k,num=None,force_comp=None):
 		"""Returns the slopes in weight k --- num-many or all computed if term==None"""
@@ -278,7 +282,7 @@ class ghost(SageObject):
 		max_i = sheets
 		assert floor(min_v)==min_v and floor(max_v)==max_v, "C'mon.  Use an integer for the endpoint"
 		if 2*max_i + 10 > self.num_coefs(comp):
-			g.compute_ghost_series(2*max_i+10)
+			self.compute_ghost_series(2*max_i+10)
 		gh = self.global_halo_piece(comp,min_v+0.5,max_i,central_wt)
 		for v in range(min_v+1,max_v):
 			gh +=  self.global_halo_piece(comp,v+0.5,max_i,central_wt)
