@@ -35,7 +35,6 @@ def good_weight(g,comp,j,k):
 		good_weight = ((ZZ(k)-z).valuation(p)+1 < bnd) and good_weight
 	return good_weight
 
-
 def available_test_weights(g,comp,i,verbose=false):
 	"""assuming control over all lower indices j<i, returns a list of weights at which
 		we should know exactly the valuation of a_i"""

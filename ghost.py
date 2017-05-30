@@ -126,6 +126,11 @@ class ghost(SageObject):
 		component comp"""
 		return [self[comp][j][a][0] for a in range(len(self[comp][j]))]
 
+	def nth_level_zeroes(self,comp,j,n):
+		"""Returns a list of the zeroes (without multiplicities) of the j-th coefficient in 
+		component comp whose multiplicity is at least n"""
+		return [self[comp][j][a][0] for a in range(len(self[comp][j])) if self[comp][j][a][1] >= n]
+
 	def mult(self,comp,j,z):
 		"""returns the multiplicity of z as a zero of j-th coefficient on component comp"""
 		zs = self.zeroes(comp,j)
