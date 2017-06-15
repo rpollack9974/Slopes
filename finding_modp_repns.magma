@@ -1,0 +1,464 @@
+Attach("montes.m");
+Attach("Ideals.m");
+
+// Reductions of characteristic 0 forms whose mod p eigenvalues are in F_p
+// Returns two lists: one of reduced eigenvalues and a second of their multiplicities
+function mod_p_reductions(p,N,k)	
+	ans:=[[**],[**]];
+	print "-------------------------------------------------";
+	print "Newform decomposition in weight",k;	
+	primes:=PrimesUpTo(100);
+	M:=CuspidalSubspace(ModularSymbols(N,k,1));
+	As:=NewformDecomposition(M);
+	print "Dimension of space is",Dimension(M);
+//	print "There are ",#As,"Galois conjucacy classes of forms";
+	for j in [1..#As] do
+		print "Computing system of eigenvalues in Galois orbit of number",j;
+		time eigens:=SystemOfEigenvalues(As[j],25);
+		print "done";
+		K:=Parent(eigens[1]);
+		//Crazy work-around here needed because Montes package requires number fields
+		//to be defined by monic integral polynomials, but magma does not realize
+		//that K has this property.  So we force the issue.
+		f:=DefiningPolynomial(K);
+		Zx:=PolynomialRing(Integers());
+		L:=NumberField(Zx!f);
+		Embed(K,L,L.1);
+		eigens := [L!eigens[a] : a in [1..#eigens]];
+		if Degree(K) gt 1 then
+			print "Computing primes over",p;
+			Montes(L,p);
+			time pps:=L`PrimeIdeals[p];
+			print "done";
+			r:=#pps;
+		else
+			pps:=[p];
+			r:=1;
+		end if;
+		adjust:=Dimension(As[j]) / Degree(K); //this should be dealing with old forms
+		print "There are",r,"primes over",p;
+		for i in [1..#pps] do
+			print "---------------------";
+			print "Working with prime",i;
+			if Degree(K) gt 1 then
+				pp:=pps[i];
+				e:=pp`e;
+				f:=pp`f;
+			else
+				pp:=p;
+				e:=1;
+				f:=1;	
+			end if;
+			//Check to see if mod p eigensystem is over Fp 
+			cont:=true;
+			print "Coercing and reducing";
+			if Degree(K) gt 1 then
+				aps:=[];
+				a:=1;
+				time while (a le #eigens) and cont do
+					if GCD(primes[a],N*p) eq 1 then
+						ev := Reduction(eigens[a],pp);
+						cont := cont and (ev^p eq ev);
+						if cont then
+							//aps := aps cat [[*primes[a],IntegerRing()!(eigens[a]) mod p*]];
+							aps := aps cat [[*primes[a],IntegerRing()!ev*]];
+						end if;
+					end if;
+					a := a+1;
+				end while;
+			else
+				cont:=true;
+				aps:=[[*primes[a],IntegerRing()!(eigens[a]) mod p*] : a in [1..#eigens] | Gcd(primes[a],N*p) eq 1];
+			end if;
+			if cont then
+				b:=Position(ans[1],aps);
+				if b eq 0 then
+					ans[1] := ans[1] cat [*aps*];
+					ans[2] := ans[2] cat [*e*f*adjust*];
+				else
+					ans[2][b] := ans[2][b]+e*f*adjust;
+				end if;				
+			end if;
+		end for;
+	end for;
+
+	return ans;
+end function;
+
+//Runs mod_p_reductions on the series of weights between kmin and kmax. 
+//Returns a list v such that v[k] gives the rhobar data in weight k.
+function collect_rhobar_multiplicities(p,N,kmin,kmax)
+	ans:=[*0 : k in [1..kmax]*];
+	for k in [kmin..kmax] do
+		if (k mod 2 eq 0) and (k gt 0) then
+			data := mod_p_reductions(p,N,k);
+			ans[k] := data;
+		end if;
+	end for;
+	return ans;
+end function;
+
+//Only works over F_p --- definitely a problem with oldforms!
+//Returns slopes of forms in weight k with rhobar = rb
+function slopes_in_fixed_weight_with_fixed_rhobar(p,N,k,rb:verbose:=false)	
+	rb_primes:=[rb[a][1] : a in [1..#rb]];
+	if verbose then
+		print rb_primes;
+		print "-------------------------------------------------";
+		print "Newform decomposition in weight",k;	
+	end if;
+	primes:=PrimesUpTo(100);
+	slopes := [];
+	M:=CuspidalSubspace(ModularSymbols(N,k,1));
+	As:=NewformDecomposition(M);
+	if verbose then
+		print "Dimension of space is",Dimension(M);
+	end if;
+//	print "There are ",#As,"Galois conjucacy classes of forms";
+	for j in [1..#As] do
+		ap_computed:=false;
+		if verbose then
+			print "Computing system of eigenvalues in Galois orbit of number",j;
+		end if;
+		if verbose then
+			time eigens:=SystemOfEigenvalues(As[j],25);
+		else
+			eigens:=SystemOfEigenvalues(As[j],25);
+		end if;
+
+		if (p lt 25) and (N mod p ne 0) then
+			ap_computed:=(p lt 25);
+			pos:=Position(primes,p);
+			ap:=eigens[pos];
+		end if;
+		if verbose then
+			print "done";
+		end if;
+		K:=Parent(eigens[1]);
+		//Crazy work-around here needed because Montes package requires number fields
+		//to be defined by monic integral polynomials, but magma does not realize
+		//that K has this property.  So we force the issue.
+		f:=DefiningPolynomial(K);
+		Zx:=PolynomialRing(Integers());
+		L:=NumberField(Zx!f);
+		Embed(K,L,L.1);
+		eigens := [L!eigens[a] : a in [1..#eigens]];
+		if Degree(K) gt 1 then
+			//print "Computing primes over",p;
+			Montes(L,p);
+			pps:=L`PrimeIdeals[p];
+			//print "done";
+			r:=#pps;
+		else
+			pps:=[p];
+			r:=1;
+		end if;
+		adjust:=Dimension(As[j]) / Degree(K); //this should be dealing with old forms
+		if verbose then
+			print "There are",r,"primes over",p;
+		end if;
+		for i in [1..#pps] do
+			if verbose then
+				print "---------------------";
+				print "Working with prime",i;
+			end if;
+			if Degree(K) gt 1 then
+				pp:=pps[i];
+				e:=pp`e;
+				f:=pp`f;
+			else
+				pp:=p;
+				e:=1;
+				f:=1;	
+			end if;
+			//Check to see if mod p eigensystem is over Fp and if it matches with rhobar
+			cont:=true;
+			//print "Coercing and reducing";
+			if Degree(K) gt 1 then
+				evs:=[];
+				a:=1;
+				while (a le #eigens) and cont do
+					ev := Reduction(eigens[a],pp);
+					cont := cont and (ev^p eq ev);
+					pos:=Position(rb_primes,primes[a]);
+					if cont and (pos gt 0) then
+						cont := cont and (((IntegerRing()!ev) mod p) eq rb[pos][2]);
+					end if;
+					evs := evs cat [ev];
+					a := a+1;
+				end while;
+			else
+				evs:=eigens;
+				aps:=[[*primes[a],IntegerRing()!(eigens[a]) mod p*] : a in [1..#eigens] | Gcd(primes[a],N*p) eq 1];
+				cont := (aps eq rb);
+			end if;
+			if verbose then
+				print "****",cont,evs;
+			end if;
+			if cont then
+				//This is incredibly dumb
+				//print "Success!";
+				//This only needs to be computed once per As[j] --- can be improved here
+				if not ap_computed then
+					//print "Stupidly computing lots of eigenvalues";
+					if verbose then
+						time eigens:=SystemOfEigenvalues(As[j],p);
+					else
+						eigens:=SystemOfEigenvalues(As[j],p);
+					end if;					
+					ap:=eigens[#eigens];
+					ap_computed:=true;
+					//print "...done with that";
+				end if;
+				//print "Computing valuation";
+				if Degree(K) gt 1 then						
+					v:=PValuation(L!ap,pp)/e;
+				else
+					v:=Valuation(ap,p);
+				end if;
+				//print "...done",v,[e,f,adjust];
+				for j in [1..e*f*adjust] do
+					slopes := slopes cat [v];
+				end for;
+			end if;
+		end for;
+	end for;
+
+	if verbose then
+		print "----------------";
+	end if;
+	return Sort(slopes);
+end function;
+
+//This function runs through the weights between kmin and kmax congruent to comp mod p-1
+//and outputs the slopes of the forms in these weights which have rhobar gives by rb
+//Here rb is a list of the form [(q,a_q),...] as produced by collect_rhobar_multiplicities.
+//This function outputs this data to a file p.N.rhobar-data
+function collect_slopes_with_fixed_rhobar(p,N,kmin,kmax,comp,rb:save_data:=false)
+	p1:=rb[1][1];
+	a1:=rb[1][2];
+	p2:=rb[2][1];
+	a2:=rb[2][2];
+	p3:=rb[3][1];
+	a3:=rb[3][2];
+
+	rhobar:=IntegerToString(p1) cat "." cat IntegerToString(a1) cat "." cat IntegerToString(p2) cat "." cat IntegerToString(a2) cat "." cat IntegerToString(p3) cat "." cat IntegerToString(a3);
+
+	filename := "../../../other/www/people/rpollack/slopes/" cat IntegerToString(p) cat "." cat IntegerToString(N) cat "." cat rhobar; 
+
+	if save_data then
+		PrintFile(filename,"Rhobar:");
+		PrintFile(filename,rb);
+		PrintFile(filename,"");
+		PrintFile(filename,"[*");
+	end if;
+	for k in [kmin..kmax] do
+		if (k mod (p-1)) eq comp then
+			slopes:=slopes_in_fixed_weight_with_fixed_rhobar(p,N,k,rb);
+			if save_data then
+				PrintFile(filename,[*k,slopes*]);
+			end if;
+			print [*k,slopes*];
+			if save_data then
+				PrintFile(filename,",");
+			end if;
+		end if;
+	end for;
+	if save_data then
+		PrintFile(filename,"*]");
+	end if;
+
+	return 1;
+end function;
+
+//twist a rhobar by omega^t
+function twist(rb,t,p)
+	t := t mod (p-1);
+	return [[*rb[a][1],(rb[a][2]*rb[a][1]^t) mod p*] : a in [1..#rb]];
+end function;
+
+function swap(a,b)
+	return b,a;
+end function;
+
+//Runs through the weights between kmin and kmax and outputs the slopes of the forms in these weights 
+//which have rhobar equal to 1 of the 2 possible twists on rb (via congruence class of k mod p-1).
+//This function outputs this data to a file p.N.rhobar-data.with_twists 
+//The format of the data is [*k,[*t1,slopes1*],[*t2,slopes2*]*] where t1 and t2 are the two twists
+//of rb which is assumed to be normalized to arise from the smallest possible weight among all 
+//of its twists.
+function collect_slopes_with_fixed_rhobar_with_twists(p,N,kmin,kmax,comp,rb)
+	p1:=rb[1][1];
+	a1:=rb[1][2];
+	p2:=rb[2][1];
+	a2:=rb[2][2];
+	p3:=rb[3][1];
+	a3:=rb[3][2];
+	rhobar:=IntegerToString(p1) cat "." cat IntegerToString(a1) cat "." cat IntegerToString(p2) cat "." cat IntegerToString(a2) cat "." cat IntegerToString(p3) cat "." cat IntegerToString(a3) cat ".with_twists";
+
+	filename := "../../../other/www/people/rpollack/slopes/" cat IntegerToString(p) cat "." cat IntegerToString(N) cat "." cat rhobar; 
+
+	PrintFile(filename,"Rhobar:");
+	PrintFile(filename,rb);
+	PrintFile(filename,"");
+	PrintFile(filename,"[*");
+	for k in [kmin..kmax] do
+		if k ge 2 then
+			t1:=((k - comp) div 2) mod (p-1);
+			t2:=(t1 + ((p-1) div 2)) mod (p-1);
+			if t1 gt t2 then
+				t1,t2:=swap(t1,t2);
+			end if;
+			print t1,t2;
+			rbt1:=twist(rb,t1,p);
+			slopes1:=slopes_in_fixed_weight_with_fixed_rhobar(p,N,k,rbt1);
+			rbt2:=twist(rb,t2,p);
+			slopes2:=slopes_in_fixed_weight_with_fixed_rhobar(p,N,k,rbt2);
+			PrintFile(filename,[*k,[*t1,slopes1*],[*t2,slopes2*]*]);
+			PrintFile(filename,",");
+		end if;
+	end for;
+	PrintFile(filename,"*]");
+
+	return 1;
+end function;
+
+
+
+
+
+
+
+//slopes in S_k(Np,omega^j)_{rb}
+//Only works over F_p --- definitely a problem with oldforms!
+//function slopes_in_fixed_weight_with_fixed_rhobar_with_character(p,N,k,r,rb)	
+function s1(p,N,k,r,rb)	
+	rb_primes:=[rb[a][1] : a in [1..#rb]];
+	print rb_primes;
+	print "-------------------------------------------------";
+	print "Newform decomposition in weight",k;	
+	primes:=PrimesUpTo(100);
+	slopes := [];
+	G:=DirichletGroup(N*p,CyclotomicField(EulerPhi(p)));
+	i:=1;
+	while Conductor(G.i) ne p do
+		i:=i+1;
+	end while;
+	omega:=G.i;
+	M:=CuspidalSubspace(ModularSymbols(omega^r,k,1));
+	As:=NewformDecomposition(M);
+	print "Dimension of space is",Dimension(M);
+	print "There are ",#As,"Galois conjucacy classes of forms";
+	for j in [1..#As] do
+		ap_computed:=false;
+		print "Computing system of eigenvalues in Galois orbit of number",j;
+		eigens:=SystemOfEigenvalues(As[j],25);
+		if (p lt 25) and (N mod p ne 0) then
+			ap_computed:=(p lt 25);
+			pos:=Position(primes,p);
+			ap:=eigens[pos];
+		end if;
+		print "done";
+		KK:=Parent(eigens[1]);
+		K:=AbsoluteField(KK);
+		//Crazy work-around here needed because Montes package requires number fields
+		//to be defined by monic integral polynomials, but magma does not realize
+		//that K has this property.  So we force the issue.
+		f:=DefiningPolynomial(K);
+		Zx:=PolynomialRing(Integers());
+		L:=NumberField(Zx!f);
+		Embed(K,L,L.1);
+		eigens := [L!eigens[a] : a in [1..#eigens]];
+		if Degree(KK) gt 1 then
+			print "Computing primes over",p;
+			Montes(L,p);
+			pps:=L`PrimeIdeals[p];
+			print "done";
+			r:=#pps;
+		else
+			pps:=[p];
+			r:=1;
+		end if;
+		adjust:=Dimension(As[j]) / Degree(KK); //this should be dealing with old forms
+		print "There are",r,"primes over",p;
+		for i in [1..#pps] do
+			print "---------------------";
+			print "Working with prime",i;
+			if Degree(KK) gt 1 then
+				pp:=pps[i];
+				e:=pp`e;
+				f:=pp`f;
+			else
+				pp:=p;
+				e:=1;
+				f:=1;	
+			end if;
+			//Check to see if omega is really omega
+			g:=PrimitiveRoot(p);
+			while Gcd(g,N) ne 1 do
+				g:=g+p;
+			end while;
+			cont:=PValuation(K!omega(g)-g,pp) gt 0;
+			if cont then
+				print "Checking this one";
+			end if;
+			//Check to see if mod p eigensystem is over Fp and if it matches with rhobar			
+			
+			if cont then
+				print "Coercing and reducing";
+				if Degree(K) gt 1 then
+					evs:=[];
+					a:=1;
+					while (a le #eigens) and cont do
+						ev := Reduction(eigens[a],pp);
+						cont := cont and (ev^p eq ev);
+						pos:=Position(rb_primes,primes[a]);
+						if cont and (pos gt 0) then
+							cont := cont and (((IntegerRing()!ev) mod p) eq rb[pos][2]);
+						end if;
+						evs := evs cat [ev];
+						a := a+1;
+					end while;
+				else
+					evs:=eigens;
+					aps:=[[*primes[a],IntegerRing()!(eigens[a]) mod p*] : a in [1..#eigens] | Gcd(primes[a],N*p) eq 1];
+					cont := (aps eq rb);
+				end if;
+				print "****",cont,evs;
+				if cont then
+					//This is incredibly dumb
+					//print "Success!";
+					//This only needs to be computed once per As[j] --- can be improved here
+					if not ap_computed then
+						print "Stupidly computing lots of eigenvalues";
+						time eigens:=SystemOfEigenvalues(As[j],p);
+						ap:=eigens[#eigens];
+						ap_computed:=true;
+						print "...done with that";
+					end if;
+					//print "Computing valuation";
+					if Degree(K) gt 1 then						
+						v:=PValuation(L!ap,pp)/e;
+					else
+						v:=Valuation(ap,p);
+					end if;
+					//print "Chi info:",[[*j,PValuation((((chi^j)(7))-7^2),pp)*] : j in [1..4]];
+					//print "...done",v,[e,f,adjust];
+					for j in [1..IntegerRing()!(e*f*adjust)] do					
+						slopes := slopes cat [v];
+					end for;
+				end if;
+			end if;
+		end for;
+	end for;
+
+	//print "----------------";
+	return Sort(slopes);
+end function;
+
+//function doit(a)
+//	for j in [1..3] do
+//		print 2*j,s1(11,8,omega^2,2*j,twist(rb,a,11));
+//		print 2*j+1,s1(11,8,omega,2*j+1,twist(rb,a,11));
+//	end for;
+//end function;
