@@ -1,5 +1,5 @@
 Attach("montes.m");
-Attach("Ideals.m");
+Attach("+Ideals.m");
 
 // Reductions of characteristic 0 forms whose mod p eigenvalues are in F_p
 // Returns two lists: one of reduced eigenvalues and a second of their multiplicities
@@ -296,7 +296,8 @@ function collect_slopes_with_fixed_rhobar_with_twists(p,N,kmin,kmax,comp,rb)
 	a3:=rb[3][2];
 	rhobar:=IntegerToString(p1) cat "." cat IntegerToString(a1) cat "." cat IntegerToString(p2) cat "." cat IntegerToString(a2) cat "." cat IntegerToString(p3) cat "." cat IntegerToString(a3) cat ".with_twists";
 
-	filename := "../../../other/www/people/rpollack/slopes/" cat IntegerToString(p) cat "." cat IntegerToString(N) cat "." cat rhobar; 
+//	filename := "../../../other/www/people/rpollack/slopes/" cat IntegerToString(p) cat "." cat IntegerToString(N) cat "." cat rhobar; 
+	filename := "DATA/" cat IntegerToString(p) cat "." cat IntegerToString(N) cat "." cat rhobar; 
 
 	PrintFile(filename,"Rhobar:");
 	PrintFile(filename,rb);
