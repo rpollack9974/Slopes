@@ -72,12 +72,13 @@ class ghost(SageObject):
 				stored.
 		"""
 		if rbdata!=None:
-			self.p=rbdata[0]
-			self.comp=(rbdata[1]+(self.p+1)*twist)%(self.p-1) ## Multiplicities assumed to be 1
+			self.p=rbdata.p
+			self.rbdata=rbdata
+			self.comp=(rbdata.krbar+(self.p+1)*twist)%(self.p-1) 
 			def f1(k):
-				return levelN_rhobar_dimension_reducible(rbdata,k,t=twist)
+				return S(k,twist,rbdata)
 			def f2(k):
-				return levelNp_pnew_rhobar_dimension_reducible(rbdata,k,t=twist)
+				return Sp(k,twist,rbdata)-2*S(k,twist,rbdata)
 		else:
 			if N!=None:
 				if not new:

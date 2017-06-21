@@ -1,0 +1,176 @@
+//T_p-slopes in S_k(Gamma_0(N))
+function slopes_in_fixed_weight(p,N,k:compact:=false,newforms:=true)
+	ans:=[];
+	M := ModularSymbols(N,k,1);
+	M := CuspidalSubspace(M);
+	if newforms then
+		M := NewSubspace(M);
+	end if;
+	f := HeckePolynomial(M,p);
+	e := Valuation(f,Parent(f).1);
+	f := Reverse(f);
+	NP := NewtonPolygon(f,p);
+	vs := LowerVertices(NP);
+	for a in [1..#vs-1] do
+		slope := (vs[a+1][2]-vs[a][2])/(vs[a+1][1]-vs[a][1]);
+		mult := vs[a+1][1]-vs[a][1];
+		if compact then
+			ans := ans cat [[slope,mult]];
+		else
+			for j in [1..mult] do
+				ans := ans cat [slope];
+			end for;
+		end if;
+	end for;
+
+	if compact then
+		ans := ans cat [[Infinity(),e]];
+	else
+		for j in [1..e] do
+			ans := ans cat [Infinity()];
+		end for;
+	end if;
+
+	return ans;
+end function;
+
+//T_p-slopes in S_k(Gamma_1(Np),omega^r)
+function slopes_in_fixed_weight_with_char(p,N,k,r:compact:=false,newforms:=true)
+	ans:=[];
+	K:=CyclotomicField(EulerPhi(p));
+	G:=DirichletGroup(N*p,K);
+	j:=1;
+	while Conductor(G.j) ne p do
+		j := j+1;
+	end while;
+	omega := G.j;
+	g := PrimitiveRoot(p);
+	while GCD(g,N) ne 1 do
+		g := g + p;
+	end while;
+	O:=EquationOrder(K);
+	Op:=pMaximalOrder(O,p);
+	pps:=Factorization(p*O);
+	pp:=pps[1][1];
+	chi:=omega;
+	while Valuation(chi(g)-g,pp) eq 0 do
+		chi := chi * omega;
+	end while;
+	omega:=chi;
+
+	M := ModularSymbols(omega^r,k,1);
+	M := CuspidalSubspace(M);
+	if newforms then
+		M := NewSubspace(M);
+	end if;
+	f := HeckePolynomial(M,p);
+	e := Valuation(f,Parent(f).1);
+	f := Reverse(f);
+	print f;
+	NP := NewtonPolygon(f,pp);
+	vs := LowerVertices(NP);
+	for a in [1..#vs-1] do
+		slope := (vs[a+1][2]-vs[a][2])/(vs[a+1][1]-vs[a][1]);
+		mult := vs[a+1][1]-vs[a][1];
+		if compact then
+			ans := ans cat [[slope,mult]];
+		else
+			for j in [1..mult] do
+				ans := ans cat [slope];
+			end for;
+		end if;
+	end for;
+
+	if compact then
+		ans := ans cat [[Infinity(),e]];
+	else
+		for j in [1..e] do
+			ans := ans cat [Infinity()];
+		end for;
+	end if;
+
+	return ans;
+end function;
+
+
+function non_zero_slopes_in_low_weight(p,N:newforms:=true)
+	ans := [**];
+	for k in [2..p+1] do
+		if k mod 2 eq 0 then
+			v := slopes_in_fixed_weight(p,N,k:newforms:=true);
+			v := [v[a] : a in [1..#v] | v[a] gt 0];
+			if #v gt 0 then
+				ans := ans cat [*[*k,v*]*];
+				v := slopes_in_fixed_weight(p,N,k+p-1:newforms:=true);
+				v := [v[a] : a in [1..#v] | v[a] gt 0];
+				ans := ans cat [*[*k+p-1,v*]*];
+			end if;
+		end if;
+	end for;
+
+	return ans;
+end function;
+
+function display_non_zero_slopes(data)
+	for j in [1..#data] do
+		k:=data[j][1];
+		slopes:=data[j][2];
+		print k,":",slopes;
+	end for;
+	return "Done";
+end function;
+
+function collect_non_zero_slopes_in_low_weight(minp,maxp,minN,maxN:newforms:=true)
+	p := NextPrime(minp-1);
+	while p le maxp do
+		for N in [minN..maxN] do			
+			if (N mod p ne 0) then
+				ans := non_zero_slopes_in_low_weight(p,N:newforms:=true);
+				if #ans gt 0 then
+					print p,N;
+
+					print ans;
+					print "-----------------------";
+				end if;
+			end if;
+		end for;
+		p := NextPrime(p);
+	end while;
+
+	return "Done";
+end function;
+
+
+
+
+//*****HILBERT STUFF RANDOMLY HERE
+
+for s in [4..30] do
+	if s mod 2 eq 0 then
+		for k1 in [2..s div 2] do
+			k2:=s-k1;
+			if (k1 mod 2 eq 0) and (k2 mod 2 eq 0) then
+				print [k1,k2],"----------------------";
+				T:=HeckeOperator(HilbertCuspForms(F,p11,[k1,k2]),3*OF);
+				f:=CharacteristicPolynomial(T);
+				ans:=[];
+				NP := NewtonPolygon(f,3*OF);
+				vs := LowerVertices(NP);
+				for a in [1..#vs-1] do
+					slope := (vs[a+1][2]-vs[a][2])/(vs[a+1][1]-vs[a][1]);
+					mult := vs[a+1][1]-vs[a][1];
+					if compact then
+						ans := ans cat [[slope,mult]];
+					else
+						for j in [1..mult] do
+							ans := ans cat [slope];
+						end for;
+					end if;
+				end for;
+				print ans;
+			end if;
+		end for;
+	end if;
+end for;
+
+
