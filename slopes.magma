@@ -1,5 +1,5 @@
 //T_p-slopes in S_k(Gamma_0(N))
-function slopes_in_fixed_weight(p,N,k:compact:=false,newforms:=true)
+function slopes_in_fixed_weight(p,N,k:compact:=false,newforms:=false)
 	ans:=[];
 	M := ModularSymbols(N,k,1);
 	M := CuspidalSubspace(M);
@@ -141,8 +141,6 @@ function collect_non_zero_slopes_in_low_weight(minp,maxp,minN,maxN:newforms:=tru
 end function;
 
 function collect_slopes(p,N,kmin,kmax,comp:save_data:=false)
-	rhobar:=IntegerToString(p1) cat "." cat IntegerToString(a1) cat "." cat IntegerToString(p2) cat "." cat IntegerToString(a2) cat "." cat IntegerToString(p3) cat "." cat IntegerToString(a3);
-
 	filename := "DATA/" cat IntegerToString(p) cat "." cat IntegerToString(N);
 
 	if save_data then

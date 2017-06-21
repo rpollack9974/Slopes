@@ -234,7 +234,7 @@ end function;
 //and outputs the slopes of the forms in these weights which have rhobar gives by rb
 //Here rb is a list of the form [(q,a_q),...] as produced by collect_rhobar_multiplicities.
 //This function outputs this data to a file p.N.rhobar-data
-function collect_slopes_with_fixed_rhobar(p,N,kmin,kmax,comp,rb:save_data:=false)
+function collect_slopes_with_fixed_rhobar(p,N,kmin,kmax,comp,rb:save_data:=true)
 	p1:=rb[1][1];
 	a1:=rb[1][2];
 	p2:=rb[2][1];
@@ -244,7 +244,8 @@ function collect_slopes_with_fixed_rhobar(p,N,kmin,kmax,comp,rb:save_data:=false
 
 	rhobar:=IntegerToString(p1) cat "." cat IntegerToString(a1) cat "." cat IntegerToString(p2) cat "." cat IntegerToString(a2) cat "." cat IntegerToString(p3) cat "." cat IntegerToString(a3);
 
-	filename := "../../../other/www/people/rpollack/slopes/" cat IntegerToString(p) cat "." cat IntegerToString(N) cat "." cat rhobar; 
+//	filename := "../../../other/www/people/rpollack/slopes/" cat IntegerToString(p) cat "." cat IntegerToString(N) cat "." cat rhobar; 
+	filename := "DATA/" cat IntegerToString(p) cat "." cat IntegerToString(N) cat "." cat rhobar; 
 
 	if save_data then
 		PrintFile(filename,"Rhobar:");
@@ -254,6 +255,7 @@ function collect_slopes_with_fixed_rhobar(p,N,kmin,kmax,comp,rb:save_data:=false
 	end if;
 	for k in [kmin..kmax] do
 		if (k mod (p-1)) eq comp then
+			print k;
 			slopes:=slopes_in_fixed_weight_with_fixed_rhobar(p,N,k,rb);
 			if save_data then
 				PrintFile(filename,[*k,slopes*]);
@@ -305,12 +307,12 @@ function collect_slopes_with_fixed_rhobar_with_twists(p,N,kmin,kmax,comp,rb)
 	PrintFile(filename,"[*");
 	for k in [kmin..kmax] do
 		if k ge 2 then
+			print "Working at weight",k,"level",N,"and prime",p;
 			t1:=((k - comp) div 2) mod (p-1);
 			t2:=(t1 + ((p-1) div 2)) mod (p-1);
 			if t1 gt t2 then
 				t1,t2:=swap(t1,t2);
 			end if;
-			print t1,t2;
 			rbt1:=twist(rb,t1,p);
 			slopes1:=slopes_in_fixed_weight_with_fixed_rhobar(p,N,k,rbt1);
 			rbt2:=twist(rb,t2,p);
