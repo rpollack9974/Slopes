@@ -140,37 +140,34 @@ function collect_non_zero_slopes_in_low_weight(minp,maxp,minN,maxN:newforms:=tru
 	return "Done";
 end function;
 
+function collect_slopes(p,N,kmin,kmax,comp:save_data:=false)
+	rhobar:=IntegerToString(p1) cat "." cat IntegerToString(a1) cat "." cat IntegerToString(p2) cat "." cat IntegerToString(a2) cat "." cat IntegerToString(p3) cat "." cat IntegerToString(a3);
 
+	filename := "DATA/" cat IntegerToString(p) cat "." cat IntegerToString(N);
 
-
-//*****HILBERT STUFF RANDOMLY HERE
-
-for s in [4..30] do
-	if s mod 2 eq 0 then
-		for k1 in [2..s div 2] do
-			k2:=s-k1;
-			if (k1 mod 2 eq 0) and (k2 mod 2 eq 0) then
-				print [k1,k2],"----------------------";
-				T:=HeckeOperator(HilbertCuspForms(F,p11,[k1,k2]),3*OF);
-				f:=CharacteristicPolynomial(T);
-				ans:=[];
-				NP := NewtonPolygon(f,3*OF);
-				vs := LowerVertices(NP);
-				for a in [1..#vs-1] do
-					slope := (vs[a+1][2]-vs[a][2])/(vs[a+1][1]-vs[a][1]);
-					mult := vs[a+1][1]-vs[a][1];
-					if compact then
-						ans := ans cat [[slope,mult]];
-					else
-						for j in [1..mult] do
-							ans := ans cat [slope];
-						end for;
-					end if;
-				end for;
-				print ans;
-			end if;
-		end for;
+	if save_data then
+		PrintFile(filename,"p=");
+		PrintFile(filename,p);
+		PrintFile(filename,", N=");
+		PrintFile(filename,N);
 	end if;
-end for;
+	for k in [kmin..kmax] do
+		if (k mod (p-1)) eq comp then
+			slopes:=slopes_in_fixed_weight(p,N,k);
+			if save_data then
+				PrintFile(filename,[*k,slopes*]);
+			end if;
+			print [*k,slopes*];
+			if save_data then
+				PrintFile(filename,",");
+			end if;
+		end if;
+	end for;
+	if save_data then
+		PrintFile(filename,"*]");
+	end if;
+
+	return 1;
+end function;
 
 
