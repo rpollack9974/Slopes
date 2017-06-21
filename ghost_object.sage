@@ -1,4 +1,5 @@
 from sage.geometry.newton_polygon import NewtonPolygon
+load("recursive_dimension_formulas.sage")
 
 class ghost(SageObject):
 	"""This class represents a single (ghost) power series whose zeroes are deterined
