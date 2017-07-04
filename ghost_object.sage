@@ -30,14 +30,30 @@ class ghost(SageObject):
 
 		ghost_coefs = [[] for i in range(terms+1)]
 
-		## Starting at weight 2, we run through weights in the component,
-		## compute the associated indices, and then record the weights at those
-		## indices with appropriate multiplicities
 
 		k=comp;
 		if k==0:
 			k=k+p-1
-		inds = range(f1(k)+1,f1(k)+f2(k))
+
+		## Precompute the needed dimensions
+		self.f1v = [f1(k)]
+		self.f2v = [f2(k)]
+		k = k + p-1
+		while self.f1v[len(self.f1v)-1] <= terms+1:
+			self.f1v += [f1(k)]
+			self.f2v += [f2(k)]
+			k = k + p-1
+		
+		## Starting at weight 2, we run through weights in the component,
+		## compute the associated indices, and then record the weights at those
+		## indices with appropriate multiplicities
+
+		k = comp;
+		if k==0:
+			k=k+p-1
+		n = 0
+
+		inds = range(self.f1v[n]+1,self.f1v[n]+self.f2v[n])
 		while (len(inds)==0 or inds[0]<=terms+1):
 			## This loops adds the weights to the appropriate indices with the appropriate multiplicities
 			for m in range((len(inds)+1)/2):
@@ -49,8 +65,9 @@ class ghost(SageObject):
 				else:
 					if inds[m]<=terms:
 						ghost_coefs[inds[m]] += [(k,m+1)]
-			k = k+p-1
-			inds = range(f1(k)+1,f1(k)+f2(k))
+			k = k + p-1
+			n = n + 1
+			inds = range(self.f1v[n]+1,self.f1v[n]+self.f2v[n])
 		self.series=ghost_coefs
 
 	def __init__(self,terms=50,rbdata=None,twist=None,p=None,f1=None,f2=None,comp=None,N=None,new=False):
@@ -108,6 +125,18 @@ class ghost(SageObject):
 	def __getitem__(self,i):
 		"""Returns the i-th coefficient"""
 		return self.series[i]
+
+	def __add__(self,right):
+		def f1(k):
+			return self.f1(k) + right.f1(k)
+		def f2(k):
+			return self.f2(k) + right.f2(k)
+		h = copy(self)
+		h.deltas = [[] for i in range(h.num_coefs)]
+		h.f1 = f1
+		h.f2 = f2
+		h.compute_ghost_series(self.num_coefs)
+		return h
 
 	def slopes(self,k,terms=None):
 		"""Returns the slopes in weight k --- term-many or all if term==None"""
@@ -220,6 +249,40 @@ def periodic(list,diff):
 		return list[k0]+q*diff
 	return f
 
+
+
+###adds together lists of zeroes with mults
+def add(v1,v2):
+	z1 = [v1[a][0] for a in range(len(v1))]	
+	z2 = [v2[a][0] for a in range(len(v2))]
+	zs = list(set(z1 + z2))
+	zs.sort()
+	ans = []
+	for z in zs:
+		if z1.count(z)==0:
+			i2 = z2.index(z)
+			ans += [(z,v2[i2][1])]
+		elif z2.count(z)==0:
+			i1 = z1.index(z)
+			ans += [(z,v1[i1][1])]
+		else:
+			i1 = z1.index(z)
+			i2 = z2.index(z)
+			ans += [(z,v1[i1][1]+v2[i2][1])]
+	return ans
+
+
+
+def serre_weight(rb,t):
+	p = rb.p
+	t = t%(p-1)
+	k = rb.krbar
+	assert k%(p-1)!=2, "Weight 2 not programmed"
+	beta = (k-1+t-1)%(p-1)+1
+	alpha = t
+	a = min(alpha,beta)
+	b = max(alpha,beta)
+	return 1 + p*a + b
 
 
 
