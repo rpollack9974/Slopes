@@ -2,9 +2,9 @@ Attach("montes.m");
 Attach("+Ideals.m");
 
 // Reductions of characteristic 0 forms whose mod p eigenvalues are in F_p
-// Returns two lists: one of reduced eigenvalues and a second of their multiplicities
+// Returns three lists: one of reduced eigenvalues, a second of their multiplicities, and a third of their slopes
 function mod_p_reductions(p,N,k)	
-	ans:=[[**],[**]];
+	ans:=[[**],[**],[**]];
 	print "-------------------------------------------------";
 	print "Newform decomposition in weight",k;	
 	primes:=PrimesUpTo(100);
@@ -14,7 +14,7 @@ function mod_p_reductions(p,N,k)
 //	print "There are ",#As,"Galois conjucacy classes of forms";
 	for j in [1..#As] do
 		print "Computing system of eigenvalues in Galois orbit of number",j;
-		time eigens:=SystemOfEigenvalues(As[j],25);
+		time eigens:=SystemOfEigenvalues(As[j],p+1);
 		print "done";
 		K:=Parent(eigens[1]);
 		//Crazy work-around here needed because Montes package requires number fields
@@ -70,13 +70,16 @@ function mod_p_reductions(p,N,k)
 				cont:=true;
 				aps:=[[*primes[a],IntegerRing()!(eigens[a]) mod p*] : a in [1..#eigens] | Gcd(primes[a],N*p) eq 1];
 			end if;
+			pind := Position(primes,p);
 			if cont then
 				b:=Position(ans[1],aps);
 				if b eq 0 then
 					ans[1] := ans[1] cat [*aps*];
 					ans[2] := ans[2] cat [*e*f*adjust*];
+					ans[3] := ans[3] cat [Valuation(aps[pind],pp)/e];
 				else
 					ans[2][b] := ans[2][b]+e*f*adjust;
+					ans[3] := ans[3] cat [Valuation(aps[pind],pp)/e];
 				end if;				
 			end if;
 		end for;
