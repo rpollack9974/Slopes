@@ -3,19 +3,27 @@ Attach("+Ideals.m");
 
 // Reductions of characteristic 0 forms whose mod p eigenvalues are in F_p
 // Returns three lists: one of reduced eigenvalues, a second of their multiplicities, and a third of their slopes
-function mod_p_reductions(p,N,k)	
+function mod_p_reductions(p,N,k:verbose:=false)	
 	ans:=[[**],[**],[**]];
-	print "-------------------------------------------------";
-	print "Newform decomposition in weight",k;	
+	if verbose then
+		print "-------------------------------------------------";
+		print "Newform decomposition in weight",k;	
+	end if;
 	primes:=PrimesUpTo(100);
 	M:=CuspidalSubspace(ModularSymbols(N,k,1));
 	As:=NewformDecomposition(M);
-	print "Dimension of space is",Dimension(M);
+	if verbose then
+		print "Dimension of space is",Dimension(M);
+	end if;
 //	print "There are ",#As,"Galois conjucacy classes of forms";
 	for j in [1..#As] do
-		print "Computing system of eigenvalues in Galois orbit of number",j;
-		time eigens:=SystemOfEigenvalues(As[j],p+1);
-		print "done";
+		if verbose then
+			print "Computing system of eigenvalues in Galois orbit of number",j;
+			time eigens:=SystemOfEigenvalues(As[j],Max(p+1,25));
+			print "done";
+		else
+			eigens:=SystemOfEigenvalues(As[j],Max(p+1,25));
+		end if;
 		K:=Parent(eigens[1]);
 		//Crazy work-around here needed because Montes package requires number fields
 		//to be defined by monic integral polynomials, but magma does not realize
@@ -26,20 +34,25 @@ function mod_p_reductions(p,N,k)
 		Embed(K,L,L.1);
 		eigens := [L!eigens[a] : a in [1..#eigens]];
 		if Degree(K) gt 1 then
-			print "Computing primes over",p;
+			if verbose then
+				print "Computing primes over",p;
+			end if;
 			Montes(L,p);
-			time pps:=L`PrimeIdeals[p];
-			print "done";
+			pps:=L`PrimeIdeals[p];
 			r:=#pps;
 		else
 			pps:=[p];
 			r:=1;
 		end if;
 		adjust:=Dimension(As[j]) / Degree(K); //this should be dealing with old forms
-		print "There are",r,"primes over",p;
+		if verbose then
+			print "There are",r,"primes over",p;
+		end if;
 		for i in [1..#pps] do
-			print "---------------------";
-			print "Working with prime",i;
+			if verbose then
+				print "---------------------";
+				print "Working with prime",i;
+			end if;
 			if Degree(K) gt 1 then
 				pp:=pps[i];
 				e:=pp`e;
@@ -51,11 +64,10 @@ function mod_p_reductions(p,N,k)
 			end if;
 			//Check to see if mod p eigensystem is over Fp 
 			cont:=true;
-			print "Coercing and reducing";
 			if Degree(K) gt 1 then
 				aps:=[];
 				a:=1;
-				time while (a le #eigens) and cont do
+				while (a le #eigens) and cont do
 					if GCD(primes[a],N*p) eq 1 then
 						ev := Reduction(eigens[a],pp);
 						cont := cont and (ev^p eq ev);
@@ -76,10 +88,28 @@ function mod_p_reductions(p,N,k)
 				if b eq 0 then
 					ans[1] := ans[1] cat [*aps*];
 					ans[2] := ans[2] cat [*e*f*adjust*];
-					ans[3] := ans[3] cat [Valuation(aps[pind],pp)/e];
+					if Degree(K) gt 1 then
+						ans[3] := ans[3] cat [*[*PValuation(L!eigens[pind],pp)/e*]*];
+						for j in [1..e*f*adjust-1] do
+							ans[3][#ans[3]] := ans[3][#ans[3]] cat [*PValuation(L!eigens[pind],pp)/e*];
+						end for;
+					else
+						ans[3] := ans[3] cat [*[*Valuation(eigens[pind],pp)/e*]*];
+						for j in [1..e*f*adjust-1] do
+							ans[3][#ans[3]] := ans[3][#ans[3]] cat [*Valuation(L!eigens[pind],pp)/e*];
+						end for;						
+					end if;				
 				else
 					ans[2][b] := ans[2][b]+e*f*adjust;
-					ans[3] := ans[3] cat [Valuation(aps[pind],pp)/e];
+					if Degree(K) gt 1 then
+						for j in [1..e*f*adjust] do
+							ans[3][b] := ans[3][b] cat [*PValuation(L!eigens[pind],pp)/e*];
+						end for;
+					else
+						for j in [1..e*f*adjust] do
+							ans[3][b] := ans[3][b] cat [*Valuation(L!eigens[pind],pp)/e*];
+						end for;
+					end if;
 				end if;				
 			end if;
 		end for;
@@ -468,3 +498,35 @@ end function;
 //		print 2*j+1,s1(11,8,omega,2*j+1,twist(rb,a,11));
 //	end for;
 //end function;
+
+function Eisenstein(rb,p,k)
+	eisen := true;
+	for j in [1..#rb] do
+		q := rb[j][1];
+		aq := rb[j][2];
+		eisen := eisen and (rb[j][2]-q^(k-1)-1) mod p eq 0;
+	end for;
+	return eisen;
+end function;
+		
+
+
+function profile_in_low_weight(p,N)
+	for k in [2..p+1] do
+		if k mod 2 eq 0 then
+			rbs := mod_p_reductions(p,N,k);
+			if #rbs[1] gt 0 then
+				print "Weight",k,":";
+			end if;
+			for j in [1..#rbs[1]] do
+				print "Rhobar:",rbs[1][j];
+				print "Slopes:",rbs[3][j];
+				if Eisenstein(rbs[1][j],p,k) then
+					print "EISENSTEIN";
+				end if;
+				print "-----------------";
+			end for;
+		end if;
+	end for;
+	return "Done";
+end function;
