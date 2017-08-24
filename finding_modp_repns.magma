@@ -296,12 +296,12 @@ function collect_slopes_with_fixed_rhobar(p,N,kmin,kmax,comp,rb:chi:=-1,save_dat
 	end if;
 	for k in [kmin..kmax] do
 		if (k mod (p-1)) eq comp then
-			print k;
 			slopes:=slopes_in_fixed_weight_with_fixed_rhobar(p,N,k,rb:chi:=chi);
 			if save_data then
 				PrintFile(filename,[*k,slopes*]);
 			end if;
 			print [*k,slopes*];
+			print ",";
 			if save_data then
 				PrintFile(filename,",");
 			end if;
@@ -507,29 +507,33 @@ end function;
 //	end for;
 //end function;
 
-function Eisenstein(rb,p,k)
+function Eisenstein(rb,p,k:chi:=-1)
 	eisen := true;
 	for j in [1..#rb] do
 		q := rb[j][1];
 		aq := rb[j][2];
-		eisen := eisen and (rb[j][2]-q^(k-1)-1) mod p eq 0;
+		if Type(chi) ne GrpDrchElt then
+			eisen := eisen and (rb[j][2]-q^(k-1)-1) mod p eq 0;
+		else
+			eisen := eisen and (rb[j][2]-IntegerRing()!(chi(q))*q^(k-1)-1) mod p eq 0;
+		end if;	
 	end for;
 	return eisen;
 end function;
 		
 
 
-function profile_in_low_weight(p,N)
+function profile_in_low_weight(p,N:chi:=-1)
 	for k in [2..p+1] do
-		if k mod 2 eq 0 then
-			rbs := mod_p_reductions(p,N,k);
+		if ((Type(chi) ne GrpDrchElt) and (k mod 2 eq 0)) or ((Type(chi) eq GrpDrchElt) and (chi(k) eq (-1)^k)) then
+			rbs := mod_p_reductions(p,N,k:chi:=chi);
 			if #rbs[1] gt 0 then
 				print "Weight",k,":";
 			end if;
 			for j in [1..#rbs[1]] do
 				print "Rhobar:",rbs[1][j];
 				print "Slopes:",rbs[3][j];
-				if Eisenstein(rbs[1][j],p,k) then
+				if Eisenstein(rbs[1][j],p,k:chi:=chi) then
 					print "EISENSTEIN";
 				end if;
 				print "-----------------";
