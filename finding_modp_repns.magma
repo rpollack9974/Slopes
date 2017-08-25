@@ -231,7 +231,12 @@ function slopes_in_fixed_weight_with_fixed_rhobar(p,N,k,rb:chi:=-1,verbose:=fals
 			else
 				evs:=eigens;
 				aps:=[[*primes[a],IntegerRing()!(eigens[a]) mod p*] : a in [1..#eigens] | Gcd(primes[a],N*p) eq 1];
-				cont := (aps eq rb);
+				cont := true;
+				m := 1;
+				while cont and (m le Min(#rb,#aps)) do
+					cont := cont and (aps[m] eq rb[m]);
+					m := m+1;
+				end while;
 			end if;
 			if verbose then
 				print "****",cont,evs;
