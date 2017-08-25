@@ -44,7 +44,7 @@ def test_rhobar_data(data,rb,verbose=false,levelp=False):
 		g += [ghost(rbdata=rb,twist=t,terms=terms)]
 	passed = True
 	for k in range(2,len(data)):
-		if k%2 == 0:
+		if len(data[k][1][1]) != 0:
 			t = min(((k-rb.krbar)/2) % (p-1),((k-rb.krbar)/2 + (p-1)/2) % (p-1))
 			tp = (t + (p-1)/2)%(p-1)
 			data1 = data[k][1][1]

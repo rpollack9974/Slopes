@@ -32,7 +32,7 @@ class ghost(SageObject):
 
 
 		k=comp;
-		if k==0:
+		if k==0 or k==1:
 			k=k+p-1
 
 		## Precompute the needed dimensions
@@ -49,7 +49,7 @@ class ghost(SageObject):
 		## indices with appropriate multiplicities
 
 		k = comp;
-		if k==0:
+		if k==0 or k==1:
 			k=k+p-1
 		n = 0
 
