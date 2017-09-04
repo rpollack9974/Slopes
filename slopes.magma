@@ -24,7 +24,9 @@ function slopes_in_fixed_weight(p,N,k:compact:=false,newforms:=false)
 	end for;
 
 	if compact then
-		ans := ans cat [[Infinity(),e]];
+		if e gt 0 then
+			ans := ans cat [[Infinity(),e]];
+		end if;
 	else
 		for j in [1..e] do
 			ans := ans cat [Infinity()];
@@ -141,7 +143,7 @@ function collect_non_zero_slopes_in_low_weight(minp,maxp,minN,maxN:newforms:=tru
 end function;
 
 function collect_slopes(p,N,kmin,kmax:compact:=true,save_data:=false)
-	filename := "DATA/" cat IntegerToString(p) cat "." cat IntegerToString(N) cat "." IntegerToString(kmin) cat "-" IntegerToString(kmax)
+	filename := "DATA/" cat IntegerToString(p) cat "." cat IntegerToString(N) cat "." cat IntegerToString(kmin) cat "-" cat IntegerToString(kmax);
 
 	if save_data then
 		PrintFile(filename,"p=");
