@@ -1,0 +1,31 @@
+function hecke_poly_constants(p)
+	v := [];
+	for k in [12..(p-1)/2] do
+		if k mod 2 eq 0 then
+			M := ModularSymbols(1,k,GF(p),+1);
+			S := CuspidalSubspace(M);
+			if Dimension(S) gt 0 then
+				f := HeckePolynomial(M,p);
+				c := Coefficient(f,0);
+				v := v cat [c];
+			end if;
+		end if;
+	end for;
+	v := Sort(v);
+	return v;
+end function;
+
+//runs through primes between pmin and pmax congruent to a mod n
+function collect_hecke_poly_constants(pmin,pmax:a:=0,n:=0,verbose:=true)
+	filename := "DATA/irregular." cat IntegerToString(a) cat "." cat IntegerToString(n) cat ".txt";
+	for p in [pmin..pmax] do
+		if IsPrime(p) and (p mod n eq a) then
+			v := hecke_poly_constants(p);
+			PrintFile(filename,[*p,v*]);
+			if verbose then
+				print [*p,v*];
+			end if;
+		end if;		
+	end for;
+	return 1;
+end function;
