@@ -23,17 +23,16 @@ def r(k,N):
 def Q_dt(rb):
 	p = rb.p
 	if not rb.split:
-		if rb.krbar%(p-1)!=2:
+		if rb.krbar%(p-1)!=2%(p-1):
 			return 2*rb.mult[0]
 		else:
 			return rb.mult[0]+rb.mult[1]
 	else:
-		if rb.krbar%(p-1)!=2:
+		if rb.krbar%(p-1)!=2%(p-1):
 			return 2*rb.mult[0]+2*rb.mult[2]
 		else:
 			return rb.mult[0]+rb.mult[1]+2*rb.mult[2]
 
-## can easily speed this up by using invariance under p^2-1 changes
 def S(k,t,rbdata):
 	p = rbdata.p
 	t = t%(p-1)
@@ -50,7 +49,7 @@ def S(k,t,rbdata):
 	elif k == p+2:
 		return S(3,t,rbdata) + S(p,t-1,rbdata)
 	elif rbdata.split == False:
-		if rbdata.krbar % (p-1) != 2:
+		if rbdata.krbar % (p-1) != 2 % (p-1):
 			if k == rbdata.krbar and t==0:
 				return rbdata.mult[0]
 			else:
@@ -63,7 +62,7 @@ def S(k,t,rbdata):
 			else:
 				return 0
 	else:
-		if rbdata.krbar % (p-1) != 2:
+		if rbdata.krbar % (p-1) != 2 % (p-1):
 			if k == rbdata.krbar and t == 0:
 				return rbdata.mult[0]
 			elif k == p+1-rbdata.krbar and t == p-rbdata.krbar:
@@ -135,7 +134,7 @@ def Sp(k,t,rbdata):
 		return Q_dt(rbdata)*m+Sp(k-m*(p-1),t,rbdata)
 	else:
 		kzt = (rbdata.krbar + 2*t - 2)%(p-1)+2
-		if rbdata.split == False and rbdata.krbar % (p-1) != 2:
+		if rbdata.split == False and rbdata.krbar % (p-1) != 2 % (p-1):
 			if t <= kzt-2:
 				return 2*rbdata.mult[0]
 			else:
@@ -144,7 +143,7 @@ def Sp(k,t,rbdata):
 			tot = 0
 			for j in range(0,kzt-1):
 				if (t+j-(kzt-2)) % (p-1) == 0:
-					if rbdata.krbar % (p-1) == 2:
+					if rbdata.krbar % (p-1) == 2 % (p-1):
 						tot += rbdata.mult[1]
 					else:
 						tot += rbdata.mult[0]

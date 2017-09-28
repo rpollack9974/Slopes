@@ -164,7 +164,7 @@ class ghost(SageObject):
 					if k_ss < 0:
 						y += mult
 			NP += [(i,y)]
-#		return NewtonPolygon(NP).slopes()
+
 		if terms==None:
 			return NewtonPolygon(NP).slopes()
 		else:
