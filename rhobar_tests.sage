@@ -24,6 +24,14 @@ def enhance_data_to_levelp(data2,rb,f1s=None,f2s=None):
 		t=data[m][2][0]
 		data[m][2][1] = level_N_to_level_Np(data[m][2][1],m,t,rb,f1s=f1s,f2s=f2s)
 
+def enhance_data_to_levelp_eis(data2,rb,f1s=None,f2s=None):
+	data = deepcopy(data2)
+	for m in range(2,len(data)):
+		t=data[m][1][0]
+		data[m][1][1] = level_N_to_level_Np(data[m][1][1],m,t,rb,f1s=f1s,f2s=f2s)
+		t=data[m][2][0]
+		data[m][2][1] = level_N_to_level_Np(data[m][2][1],m,t,rb,f1s=f1s,f2s=f2s)
+	return data
 
 
 ##data comes from MAGMA program finding_modp_repns.magma except the data needs to massaged by
@@ -113,11 +121,10 @@ def test(filename,verbose=false,levelp=false):
 	return test_rhobar_data(data,rb,verbose=verbose,levelp=levelp) 	
 
 def test_eis(filename,verbose=false,levelp=false):
-	load(filename)
 	print "Rhobar given by",rb
 	if levelp:
-		enhance_data_to_levelp(data,rb)     
+		data2 = enhance_data_to_levelp_eis(data,rb,f1s=f1s,f2s=f2s)     
 		print "Working at level Np up to weight",len(data)-1
 	else:
 		print "Working at level N up to weight",len(data)-1
-	return test_rhobar_data(data,rb,verbose=verbose,levelp=levelp,f1s=f1s,f2s=f2s) 	
+	return test_rhobar_data(data2,rb,verbose=verbose,levelp=levelp,f1s=f1s,f2s=f2s) 	

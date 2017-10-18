@@ -1,7 +1,7 @@
 load("ghost_object.sage")
 load("rhobar_tests.sage")
 
-lp=true
+lp=false
 verb=false
 t=cputime()
 
@@ -78,7 +78,7 @@ print test("DATA/3.7.2.2.5.1.11.1.with_twists.sage",levelp=lp,verbose=verb)
 print "Total time",cputime(t)
 
 print "Testing p=17, N=2, k=8, E_8"
-print test_eis("DATA/17.2.3.12.5.11.7.13.with_twists.sage",levelp=lp,verbose=verb)
+test_eis("DATA/17.2.3.12.5.11.7.13.with_twists.sage",levelp=lp,verbose=verb)
 
 print "Total time",cputime(t)
 
