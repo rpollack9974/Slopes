@@ -164,7 +164,7 @@ function collect_slopes(p,N,kmin,kmax:ell:=0,compact:=true,save_data:=false)
 	if ell gt 0 then
 		printf "ell=%o; p=%o, N=%o\n",ell,p,N;
 	else
-		printf "p=%o, N=%o\n",ell,p,N;		
+		printf "p=%o, N=%o\n",p,N;		
 	end if;
 
 	for k in [kmin..kmax] do
