@@ -1,12 +1,16 @@
 //T_p-slopes in S_k(Gamma_0(N))
-function slopes_in_fixed_weight(p,N,k:compact:=false,newforms:=false)
+function slopes_in_fixed_weight(p,N,k:ell:=0,compact:=false,newforms:=false)
 	ans:=[];
 	M := ModularSymbols(N,k,1);
 	M := CuspidalSubspace(M);
 	if newforms then
 		M := NewSubspace(M);
 	end if;
-	f := HeckePolynomial(M,p);
+	if ell > 0 do
+		f := HeckePolynomial(M,ell);
+	else
+		f := HeckePolynomial(M,p);
+	end if;		
 	e := Valuation(f,Parent(f).1);
 	f := Reverse(f);
 	NP := NewtonPolygon(f,p);

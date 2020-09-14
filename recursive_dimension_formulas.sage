@@ -62,10 +62,15 @@ def S(k,t,rbdata):
 			else:
 				return 0
 	else:
-		if rbdata.krbar % (p-1) != 2 % (p-1):
+		if rbdata.krbar % (p-1) != 2 % (p-1) and rbdata.krbar % (p-1) != 1 % (p-1):
 			if k == rbdata.krbar and t == 0:
 				return rbdata.mult[0]
 			elif k == p+1-rbdata.krbar and t == p-rbdata.krbar:
+				return rbdata.mult[2]
+			else:
+				return 0
+		elif rbdata.krbar % (p-1) == 1 % (p-1):
+			if k == p and t == 0:
 				return rbdata.mult[2]
 			else:
 				return 0
