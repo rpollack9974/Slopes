@@ -160,7 +160,12 @@ function collect_slopes(p,N,kmin,kmax:ell:=0,compact:=true,save_data:=false)
 			fprintf filename,"p=%o, N=%o\n",ell,p,N;		
 		end if;
 
+	if ell gt 0 then
+		printf "ell=%o; p=%o, N=%o\n",ell,p,N;
+	else
+		printf "p=%o, N=%o\n",ell,p,N;		
 	end if;
+
 	for k in [kmin..kmax] do
 		if (k mod 2) eq 0 then
 			slopes:=slopes_in_fixed_weight(p,N,k:ell:=ell,compact:=compact);
@@ -171,6 +176,11 @@ function collect_slopes(p,N,kmin,kmax:ell:=0,compact:=true,save_data:=false)
 				end for;
 				fprintf filename,"\n";
 			end if;
+			printf "k=%o: ",k;
+			for s in slopes do
+				printf s;
+			end for;
+			printf "\n";
 		end if;
 	end for;
 
