@@ -6,7 +6,7 @@ function slopes_in_fixed_weight(p,N,k:ell:=0,compact:=false,newforms:=false)
 	if newforms then
 		M := NewSubspace(M);
 	end if;
-	if ell > 0 do
+	if ell gt 0 then
 		f := HeckePolynomial(M,ell);
 	else
 		f := HeckePolynomial(M,p);
