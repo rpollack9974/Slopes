@@ -150,7 +150,7 @@ function collect_slopes(p,N,kmin,kmax:ell:=0,compact:=true,save_data:=false)
 	if ell eq 0 then
 		filename := "DATA/" cat IntegerToString(p) cat "." cat IntegerToString(N) cat "." cat IntegerToString(kmin) cat "-" cat IntegerToString(kmax);
 	else
-		filename := "DATA/ell." IntegerToString(ell) cat "." cat IntegerToString(p) cat "." cat IntegerToString(N) cat "." cat IntegerToString(kmin) cat "-" cat IntegerToString(kmax);
+		filename := "DATA/ell." cat IntegerToString(ell) cat "." cat IntegerToString(p) cat "." cat IntegerToString(N) cat "." cat IntegerToString(kmin) cat "-" cat IntegerToString(kmax);
 	end if;
 
 	if save_data then
