@@ -146,18 +146,27 @@ function collect_non_zero_slopes_in_low_weight(minp,maxp,minN,maxN:newforms:=tru
 	return "Done";
 end function;
 
-function collect_slopes(p,N,kmin,kmax:compact:=true,save_data:=false)
-	filename := "DATA/" cat IntegerToString(p) cat "." cat IntegerToString(N) cat "." cat IntegerToString(kmin) cat "-" cat IntegerToString(kmax);
+function collect_slopes(p,N,kmin,kmax:ell:=0,compact:=true,save_data:=false)
+	if ell eq 0 then
+		filename := "DATA/" cat IntegerToString(p) cat "." cat IntegerToString(N) cat "." cat IntegerToString(kmin) cat "-" cat IntegerToString(kmax);
+	else
+		filename := "DATA/ell." IntegerToString(ell) cat "." cat IntegerToString(p) cat "." cat IntegerToString(N) cat "." cat IntegerToString(kmin) cat "-" cat IntegerToString(kmax);
+	end if;
 
 	if save_data then
 		PrintFile(filename,"p=");
 		PrintFile(filename,p);
 		PrintFile(filename,", N=");
 		PrintFile(filename,N);
+		if ell gt 0 then
+			PrintFile(filename,", ell=");
+			PrintFile(filename,ell);
+		end if;
+
 	end if;
 	for k in [kmin..kmax] do
 		if (k mod 2) eq 0 then
-			slopes:=slopes_in_fixed_weight(p,N,k:compact:=compact);
+			slopes:=slopes_in_fixed_weight(p,N,k:ell:=ell,compact:=compact);
 			if save_data then
 				PrintFile(filename,[*k,slopes*]);
 			end if;
