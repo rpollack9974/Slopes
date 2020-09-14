@@ -173,13 +173,13 @@ function collect_slopes(p,N,kmin,kmax:ell:=0,compact:=true,save_data:=false)
 			if save_data then
 				fprintf filename,"k=%o: ",k;
 				for s in slopes do
-					fprintf filename,s;
+					fprintf filename,"%o",s;
 				end for;
 				fprintf filename,"\n";
 			end if;
 			printf "k=%o: ",k;
 			for s in slopes do
-				printf s;
+				printf "%o",s;
 			end for;
 			printf "\n";
 		end if;
