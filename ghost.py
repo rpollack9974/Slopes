@@ -84,7 +84,7 @@ class ghost(SageObject):
 		inds = range(f1+1,f1+f2)
 		while (len(inds)==0 or inds[0]<=num_coefs+1):
 			## This loops adds the weights to the appropriate indices with the appropriate multiplicities
-			for m in range((len(inds)+1)/2):
+			for m in range((len(inds)+1) div 2):
 				if m < floor(len(inds)/2):
 					if inds[m]<=num_coefs:
 						ghost_coefs[k%(p-1)][inds[m]] += [(k,m+1)]
