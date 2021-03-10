@@ -42,10 +42,12 @@ function compactify(list)
 end function;
 
 procedure pretty_print_compact_list(v)
-	for a in [1..#v-1] do
-		printf "(%o,%o),",v[a][1],v[a][2];
-	end for;
-	printf "(%o,%o)",v[#v][1],v[#v][2];
+	if #v ne 0 then
+		for a in [1..#v-1] do
+			printf "(%o,%o),",v[a][1],v[a][2];
+		end for;
+		printf "(%o,%o)",v[#v][1],v[#v][2];
+	end if;
 end procedure;
 
 //twist a rhobar by omega^t
@@ -385,7 +387,12 @@ function collect_rhobar_slopes(p,N,kmin,kmax,rb
 	if Type(filename) eq MonStgElt then
 		PrintFile(filename,str);
 	end if;
-	for k in [kmin..kmax by 2] do
+	if p ne 2 then
+		delta := p-1;
+	else
+		delta := 2;
+	end if;
+	for k in [kmin..kmax by delta] do
 		s := slopes_in_fixed_weight_with_fixed_rhobar(p,N,k,rb
 				:neben:=neben,newforms:=newforms,G1:=G1,compact:=compact,verbose:=verbose);
 		if compact then
