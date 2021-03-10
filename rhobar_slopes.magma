@@ -124,7 +124,7 @@ function mod_p_reductions(p,N,k:chi:=-1,newforms:=false,verbose:=false)
 	end for;
 
 	if verbose then
-		print_mod_p_reduction_data(data);
+		print_mod_p_reduction_data(ans);
 	end if;
 	return ans;
 end function;
