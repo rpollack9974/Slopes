@@ -1,6 +1,6 @@
 //T_p-slopes in one of the following spaces:
 //		S_k(Gamma_0(N)) by default
-//		S_k(Gamma_1(N),psi) if psi is specified
+//		S_k(Gamma_1(N),neben) if neben is specified
 //		S_k(Gamma_1(N)) if Gamma_1 is true
 //		can do just newforms too (set newforms to true)
 //		can do T_ell too (set value of ell)
@@ -8,13 +8,13 @@
 //		pp is the prime we use to compute slopes
 //			(answers are normalized so that the valuation of p is 1)
 //		compact changes how the slopes are displayed (as a long list or with multiplicities)
-function slopes_in_fixed_weight(pp,N,k:ell:=0,psi:=-1,G1:=false,compact:=false,newforms:=false)
+function slopes_in_fixed_weight(pp,N,k:ell:=0,neben:=-1,G1:=false,compact:=false,newforms:=false)
 	p := prime_below_prime(pp);
-	if Type(psi) ne GrpDrchElt and G1 eq false then
+	if Type(neben) ne GrpDrchElt and G1 eq false then
 		M := ModularSymbols(N,k,1);
 	else
-		if Type(psi) eq GrpDrchElt then 
-			M := ModularSymbols(psi,k,1);
+		if Type(neben) eq GrpDrchElt then 
+			M := ModularSymbols(neben,k,1);
 		else 
 			M := ModularSymbols(Gamma1(N),k,1);
 		end if;
