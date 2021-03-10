@@ -1,21 +1,82 @@
 Attach("montes.m");
 Attach("+Ideals.m");
 
+//Needed to prevent extra line breaks from appearing
+SetColumns(0);
+SetAutoColumns(false);
+
+//HELPER FUNCTIONS WHICH APPARANTELY NEED TO BE AT THE TOP OF THE FILE
+
+//helper function to display rhobar data in "mod_p_reductions"
+procedure print_mod_p_reduction_data(data:num_coefs:=6)
+	d := #data[1];
+	for c in [1..d] do
+		print "Rhobar #",c;
+		for i in [1..Min(num_coefs,#data[1][c])] do
+			q := data[1][c][i][1];
+			aq := data[1][c][i][2];
+			printf "a_%o=%o; ",q,aq;
+		end for;
+		printf "\n";
+		print "Multiplicity:",data[2][c];
+		print "Slopes:",data[3][c];
+		print "---------------------------";
+	end for;
+end procedure;
+
+//returns number of times a occurs in list
+function multiplicity(list,a)
+	return #[i : i in list | i eq a];
+end function;
+
+//counts up multiplicities
+//e.g. [1,1,4,6,6,6]  --> [[1,2],[4,1],[6,3]]
+function compactify(list)
+	S := SetToSequence(Set(list));
+	ans := [**];
+	for s in S do
+		ans := ans cat [*[s,multiplicity(list,s)]*];
+	end for;
+
+	return ans;
+end function;
+
+procedure pretty_print_compact_list(v)
+	for a in [1..#v-1] do
+		printf "(%o,%o),",v[a][1],v[a][2];
+	end for;
+	printf "(%o,%o)",v[#v][1],v[#v][2];
+end procedure;
+
+//twist a rhobar by omega^t
+function twist(rb,t,p)
+	t := t mod (p-1);
+	return [[*rb[a][1],(rb[a][2]*rb[a][1]^t) mod p*] : a in [1..#rb]];
+end function;
+
+
+//MAIN FUNCTIONS
+
 // Reductions of characteristic 0 forms whose mod p eigenvalues are in F_p
 // Returns three lists: one of reduced eigenvalues, a second of their multiplicities, 
 // and a third of their slopes
-function mod_p_reductions(p,N,k:chi:=-1,newforms:=false,verbose:=false)	
+function mod_p_reductions(p,N,k:neben:=-1,newforms:=false,G1:=false,verbose:=false)	
 	ans:=[[**],[**],[**]];
 	if verbose then
 		print "-------------------------------------------------";
 		print "Newform decomposition in weight",k;	
 	end if;
 	primes:=PrimesUpTo(1000);
-	if Type(chi) ne GrpDrchElt then
-		M:=CuspidalSubspace(ModularSymbols(N,k,1));
+	if Type(neben) ne GrpDrchElt and G1 eq false then
+		M := ModularSymbols(N,k,1);
 	else
-		M:=CuspidalSubspace(ModularSymbols(chi,k,1));
-	end if;	
+		if Type(neben) eq GrpDrchElt then 
+			M := ModularSymbols(neben,k,1);
+		else 
+			M := ModularSymbols(Gamma1(N),k,1);
+		end if;
+	end if;
+	M := CuspidalSubspace(M);
 	if newforms then
 		M:=NewSubspace(M);
 	end if;
@@ -124,7 +185,7 @@ function mod_p_reductions(p,N,k:chi:=-1,newforms:=false,verbose:=false)
 	end for;
 
 	if verbose then
-		print_mod_p_reduction_data(data);
+		print_mod_p_reduction_data(ans);
 	end if;
 	return ans;
 end function;
@@ -153,12 +214,13 @@ end function;
 //N -- level
 //k -- weight
 //rb -- rhobar coming from mod_p_reductions
-//chi -- quadratic Dirichlet character (optional)
-function slopes_in_fixed_weight_with_fixed_rhobar(p,N,k,rb:chi:=-1,sign:=1,newforms:=false,verbose:=false)	
+//neben -- quadratic Dirichlet character (optional)
+function slopes_in_fixed_weight_with_fixed_rhobar(p,N,k,rb:
+		neben:=-1,newforms:=false,G1:=false,compact:=true,verbose:=false)	
 	//code doesn't correct compute slopes of p-old forms!!
 	assert N mod p ne 0;
-	if Type(chi) eq GrpDrchElt then
-		assert Modulus(chi) mod p ne 0;
+	if Type(neben) eq GrpDrchElt then
+		assert Modulus(neben) mod p ne 0;
 	end if;
 
 	rb_primes:=[rb[a][1] : a in [1..#rb]];
@@ -169,14 +231,19 @@ function slopes_in_fixed_weight_with_fixed_rhobar(p,N,k,rb:chi:=-1,sign:=1,newfo
 	end if;
 	primes:=PrimesUpTo(100);
 	slopes := [];
-	if Type(chi) ne GrpDrchElt then
-		M:=CuspidalSubspace(ModularSymbols(N,k,sign));
+	if Type(neben) ne GrpDrchElt and G1 eq false then
+		M := ModularSymbols(N,k,1);
 	else
-		M:=CuspidalSubspace(ModularSymbols(chi,k,sign));
-	end if;	
+		if Type(neben) eq GrpDrchElt then 
+			M := ModularSymbols(neben,k,1);
+		else 
+			M := ModularSymbols(Gamma1(N),k,1);
+		end if;
+	end if;
 	if newforms then
 		M:=NewSubspace(M);
 	end if;
+	M := CuspidalSubspace(M);
 	As:=NewformDecomposition(M);
 	if verbose then
 		print "Dimension of space is",Dimension(M);
@@ -299,12 +366,56 @@ function slopes_in_fixed_weight_with_fixed_rhobar(p,N,k,rb:chi:=-1,sign:=1,newfo
 	if verbose then
 		print "----------------";
 	end if;
-	return Sort(slopes);
+
+	ans := Sort(slopes);
+
+	if compact then
+		return compactify(ans);
+	else
+		return ans;
+	end if;
 end function;
 
-//twist a rhobar by omega^t
-function twist(rb,t,p)
-	t := t mod (p-1);
-	return [[*rb[a][1],(rb[a][2]*rb[a][1]^t) mod p*] : a in [1..#rb]];
+
+function collect_rhobar_slopes(p,N,kmin,kmax,rb
+				:neben:=-1,newforms:=false,G1:=false,compact:=true,verbose:=false,filename:=-1)	
+	ans := [**];
+	str := Sprintf("Working with p=%o, N=%o and rhobar=%o\n",p,N,rb);
+	print str;
+	if Type(filename) eq MonStgElt then
+		PrintFile(filename,str);
+	end if;
+	for k in [kmin..kmax by 2] do
+		s := slopes_in_fixed_weight_with_fixed_rhobar(p,N,k,rb
+				:neben:=neben,newforms:=newforms,G1:=G1,compact:=compact,verbose:=verbose);
+		if compact then
+			printf "%o: ",k;
+			pretty_print_compact_list(s);
+			printf "\n";
+			if Type(filename) eq MonStgElt then
+				SetOutputFile(filename);
+				printf "%o: ",k;
+				pretty_print_compact_list(s);
+				printf "\n";
+				UnsetOutputFile();
+			end if;
+		else
+			printf "%o: ",k;
+			print s;
+			if Type(filename) eq MonStgElt then
+				SetOutputFile(filename);
+				printf "%o: ",k;
+				print s;
+				UnsetOutputFile();
+			end if;
+		end if;
+		ans := ans cat [*[*k,s*]*];
+	end for;
+	return ans;
 end function;
+
+
+
+
+
 
